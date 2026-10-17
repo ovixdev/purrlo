@@ -23,6 +23,13 @@ virtual devices (CoreAudio):
   record --device <uid|name> --seconds <n> --out <file.wav>
   default-output [<uid>]              print, or set, the default output device
   device-running <uid>                1 if any process does IO on the device, else 0
+
+hardware spike (E2E-H4; disconnects and reconnects a real speaker, never used by the app):
+  spike outputs                       output devices as JSON lines, Bluetooth first
+  spike volume <uid> [<0..1>]         print, or set, the Mac-side output volume
+  spike disconnect <uid>              IOBluetoothDevice.closeConnection
+  spike connect <uid>                 IOBluetoothDevice.openConnection (blocks)
+  spike wait-present <uid> true|false [--timeout <s>]
 """
 
 struct Failure: Error, CustomStringConvertible {
@@ -158,6 +165,38 @@ func record(_ args: [String]) throws {
     try Recorder.wavData(recording).write(to: URL(fileURLWithPath: required("--out", in: args)))
 }
 
+func spike(_ args: [String]) throws {
+    switch (args.first, args.count) {
+    case ("outputs", 1):
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        for output in HardwareSpike.outputs() {
+            try print(String(bytes: encoder.encode(output), encoding: .utf8) ?? "")
+        }
+    case ("volume", 2):
+        try print(String(format: "%.3f", HardwareSpike.volume(uid: args[1])))
+    case ("volume", 3):
+        guard let volume = Float(args[2]) else { fail("volume must be 0...1", code: 64) }
+        try HardwareSpike.setVolume(volume, uid: args[1])
+    case ("disconnect", 2):
+        try HardwareSpike.disconnect(uid: args[1])
+    case ("connect", 2):
+        try HardwareSpike.connect(uid: args[1])
+    case let ("wait-present", count) where count >= 3:
+        let wanted = args[2] == "true"
+        let timeout = option("--timeout", in: args).flatMap(Double.init) ?? 20
+        let start = Date()
+        while HardwareSpike.isPresent(uid: args[1]) != wanted {
+            guard Date().timeIntervalSince(start) < timeout
+            else { fail("\(args[1]) present=\(!wanted) after \(timeout) s") }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        print(String(format: "%.1f", Date().timeIntervalSince(start)))
+    default:
+        fail(usage, code: 64)
+    }
+}
+
 // MARK: Main
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -188,6 +227,8 @@ do {
         } else {
             print(VirtualDevice.defaultOutputUID() ?? "none")
         }
+    case "spike":
+        try spike(rest)
     case "device-running":
         guard let uid = rest.first else { fail("device-running <uid>", code: 64) }
         print(VirtualDevice.isRunningSomewhere(uid: resolveUID(uid)) ? 1 : 0)
