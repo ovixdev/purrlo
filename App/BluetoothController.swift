@@ -19,7 +19,10 @@
 
         func controls(for devices: [AudioDevice]) -> [String: BluetoothControl] {
             let paired = pairedDevices()
-            let names = paired.compactMap(\.name)
+            let names: [String] = paired.compactMap { device in
+                let name: String? = device.name
+                return name
+            }
             var named: [String: IOBluetoothDevice] = [:]
             var result: [String: BluetoothControl] = [:]
             for device in devices {
