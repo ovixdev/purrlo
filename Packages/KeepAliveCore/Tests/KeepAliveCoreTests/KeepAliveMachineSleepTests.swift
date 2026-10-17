@@ -5,11 +5,26 @@ import Testing
 extension KeepAliveMachineTests {
     // MARK: Sleep
 
-    @Test("FR-11, FR-13: Streaming + will sleep → Suspended in the §5 order, within one event")
+    @Test("FR-11: Streaming + will sleep → Suspended in the §5 order, within one event, volume untouched")
     func willSleepOrder() {
         var machine = Self.machine(in: .streaming, target: echo(), lid: true)
         let effects = Self.actions(machine.reduce(.systemWillSleep))
         #expect(machine.state == .suspended)
+        #expect(effects == [
+            .stopEngine,
+            .disconnectBluetooth(uid: echoUID),
+            .setLidBlock(false),
+            .releaseAssertion,
+            .allowSleep,
+        ])
+        #expect(machine.disconnectedByApp)
+        #expect(!machine.volumePending)
+    }
+
+    @Test("FR-13 (dropped, kept off): with quiet reconnect enabled the volume is zeroed before the disconnect")
+    func willSleepOrderQuietReconnect() {
+        var machine = Self.machine(in: .streaming, target: echo(), lid: true, quietReconnect: true)
+        let effects = Self.actions(machine.reduce(.systemWillSleep))
         #expect(effects == [
             .stopEngine,
             .saveAndZeroVolume(uid: echoUID),
@@ -80,9 +95,9 @@ extension KeepAliveMachineTests {
         #expect(machine.reduce(.screenUnlocked).isEmpty)
     }
 
-    @Test("FR-12, FR-13: after the reconnect the target streams and the volume is restored 3 s later")
+    @Test("FR-12, FR-13 (dropped, kept off): after the reconnect the target streams; a saved volume returns 3 s later")
     func reconnectStreamsAndRestores() {
-        var machine = Self.machine(in: .suspended, target: echo())
+        var machine = Self.machine(in: .suspended, target: echo(), quietReconnect: true)
         _ = machine.reduce(.devicesChanged([]))
         _ = machine.reduce(.screenUnlocked)
         let effects = machine.reduce(.devicesChanged([echo()]))
@@ -105,9 +120,9 @@ extension KeepAliveMachineTests {
         #expect(machine.state == .waiting)
     }
 
-    @Test("FR-12 §5 wake step 5: a target that came back during sleep is not reconnected")
+    @Test("FR-12 §5 wake step 4: a target that came back during sleep is not reconnected")
     func targetBackBeforeUnlock() {
-        var machine = Self.machine(in: .suspended, target: echo())
+        var machine = Self.machine(in: .suspended, target: echo(), quietReconnect: true)
         _ = machine.reduce(.devicesChanged([]))
         _ = machine.reduce(.devicesChanged([echo()]))
         let effects = machine.reduce(.screenUnlocked)

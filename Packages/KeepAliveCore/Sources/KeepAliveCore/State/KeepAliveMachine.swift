@@ -14,7 +14,9 @@ public struct KeepAliveConfig: Sendable, Equatable, Codable {
     public var lidClosedMode = false
     public var disconnectBeforeSleep = true
     public var reconnectAfterUnlock = true
-    public var quietReconnect = true
+    /// FR-13 was dropped after E2E-H4 (the announcement ignores the Mac-side volume). The code stays for a
+    /// possible revisit with other speakers, switched off; nothing in the app turns it on.
+    public var quietReconnect = false
 
     public init() {}
 }

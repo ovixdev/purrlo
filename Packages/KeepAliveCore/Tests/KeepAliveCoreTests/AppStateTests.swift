@@ -232,11 +232,12 @@ final class AppStateTests {
         state.start()
         state.selectTarget(uid: echoUID)
         state.send(.systemWillSleep)
-        // E2E-7 order: stop, save and zero volume, close the connection, clear the flag, release, allow sleep.
-        #expect(Array(log.calls.suffix(6)) == [
-            "engine.stop", "volume.saveAndZero(\(echoUID))", "bt.closeConnection(\(echoUID))",
+        // E2E-7 order: stop, close the connection, clear the flag, release, allow sleep; FR-13 is dropped.
+        #expect(Array(log.calls.suffix(5)) == [
+            "engine.stop", "bt.closeConnection(\(echoUID))",
             "helper.setSleepDisabled(false)", "power.release", "allowSleep",
         ])
+        #expect(!log.calls.contains { $0.hasPrefix("volume.") })
         monitor.publish([])
         state.send(.systemDidWake)
         state.send(.screenUnlocked)

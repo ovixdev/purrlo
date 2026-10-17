@@ -10,9 +10,11 @@ struct KeepAliveMachineTests {
         target: String? = "e2e-speaker",
         keepAlive: Bool = true,
         lid: Bool = false,
-        preventIdleSleep: Bool = true
+        preventIdleSleep: Bool = true,
+        quietReconnect: Bool = false
     ) -> KeepAliveConfig {
         var config = KeepAliveConfig()
+        config.quietReconnect = quietReconnect
         config.targetUID = target
         config.keepAlive = keepAlive
         config.lidClosedMode = lid
@@ -25,10 +27,11 @@ struct KeepAliveMachineTests {
         in state: KeepAliveState,
         target: AudioDevice = speaker(),
         lid: Bool = false,
-        volumePending: Bool = false
+        volumePending: Bool = false,
+        quietReconnect: Bool = false
     ) -> KeepAliveMachine {
         var machine = KeepAliveMachine(
-            config: config(target: target.uid, keepAlive: state != .off, lid: lid),
+            config: config(target: target.uid, keepAlive: state != .off, lid: lid, quietReconnect: quietReconnect),
             volumePending: volumePending
         )
         _ = machine.start()
@@ -231,11 +234,9 @@ struct KeepAliveMachineTests {
         }
     }
 
-    @Test("FR-13, EC-12: disabling restores a pending volume when the target is present")
+    @Test("FR-13 (dropped, kept off), EC-12: disabling restores a pending volume when the target is present")
     func disableRestoresVolume() {
-        var machine = Self.machine(in: .streaming, target: echo(), volumePending: true)
-        _ = machine.reduce(.timerFired(.volumeRestore)) // restored by the 3 s timer
-        var suspended = Self.machine(in: .suspended, target: echo())
+        var suspended = Self.machine(in: .suspended, target: echo(), quietReconnect: true)
         _ = suspended.reduce(.devicesChanged([echo()]))
         var config = suspended.config
         config.keepAlive = false
