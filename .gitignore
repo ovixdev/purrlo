@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Local editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Swift Package Manager (keep Package.resolved tracked)
+.build/
+.swiftpm/
+
+# XcodeGen output and per-user Xcode state
+*.xcodeproj/
+xcuserdata/
+*.xcuserstate
+
+# Build, test, and release output
+build/
+DerivedData/
+/dist/
+/artifacts/
+*.xcarchive/
+*.xcresult/
+*.dSYM/
+*.dSYM.zip
+*.dmg
+*.log
+*.profraw
+*.profdata
+e2e-report-*.json
+
+# Local secrets and signing material
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.p12
+*.p8
+*.pfx
+*.pem
+*.key
+*.cer
+*.keychain
+*.keychain-db
+*.mobileprovision
+*.provisionprofile
