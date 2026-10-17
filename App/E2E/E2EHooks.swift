@@ -98,7 +98,8 @@
                     NSApplication.shared.terminate(nil)
                 }
                 return encode(ControlSuccess(result: "quitting"))
-            case let ("simulate", [action]):
+            case let ("simulate", args) where args.count == 1:
+                let action = args[0]
                 switch action {
                 case "will-sleep": appState.send(.systemWillSleep)
                 case "did-wake": appState.send(.systemDidWake)
