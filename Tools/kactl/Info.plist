@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.ovixdev.purrlo.kactl</string>
+	<key>CFBundleName</key>
+	<string>kactl</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>kactl disconnects and reconnects the speaker you choose during the E2E-H4 hardware test.</string>
+</dict>
+</plist>
