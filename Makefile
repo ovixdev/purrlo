@@ -8,7 +8,7 @@ DERIVED := build/DerivedData
 E2E_PRODUCTS := $(DERIVED)/Build/Products/E2E
 XCODEBUILD := xcodebuild -project $(PROJECT) -derivedDataPath $(DERIVED) -destination "platform=macOS,arch=$(shell uname -m)" -quiet
 
-.PHONY: bootstrap generate build build-release build-e2e lint format test e2e e2e-hardware clean
+.PHONY: bootstrap generate build build-release build-e2e check-release lint format test e2e e2e-hardware clean
 
 bootstrap:
 	brew install xcodegen swiftlint swiftformat
@@ -24,6 +24,10 @@ build-release: generate
 
 build-e2e: generate
 	$(XCODEBUILD) -scheme Purrlo-E2E -configuration E2E build
+
+# NFR-10: the Release binary contains no E2E test hooks.
+check-release: build-release
+	scripts/check-release-hooks.sh $(DERIVED)/Build/Products/Release/Purrlo.app
 
 lint:
 	swiftformat --lint .
