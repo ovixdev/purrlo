@@ -52,6 +52,22 @@ extension L2Hardware {
             #expect(VirtualDevice.isRunningSomewhere(uid: uid))
         }
 
+        @Test("FR-4: silence then tone keeps the device running and does not drop the tone")
+        func signalChangeDoesNotDropOut() throws {
+            let engine = AUHALEngine()
+            let device = try blackHole()
+            try engine.start(device: device, signal: .silence)
+            defer { engine.stop() }
+            try engine.start(device: device, signal: .tone)
+            #expect(engine.isRunning)
+            #expect(VirtualDevice.isRunningSomewhere(uid: uid))
+            let recording = try Recorder.record(uid: uid, seconds: 2.3)
+            let samples = settled(recording)
+            expectTone(samples, sampleRate: recording.sampleRate)
+            let limit = Int(recording.sampleRate * 0.020)
+            #expect(longestZeroRun(samples) <= limit, "zero run exceeds 20 ms")
+        }
+
         @Test("EC-5: switching the default output does not move the stream")
         func ignoresDefaultOutput() async throws {
             let original = try #require(VirtualDevice.defaultOutputUID())

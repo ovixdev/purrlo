@@ -44,6 +44,22 @@ func magnitude(of samples: ArraySlice<Float>, at frequency: Double, sampleRate: 
     return sqrt(previous * previous + beforePrevious * beforePrevious - coefficient * previous * beforePrevious)
 }
 
+func longestZeroRun(_ samples: ArraySlice<Float>) -> Int {
+    var longest = 0
+    var current = 0
+    for sample in samples {
+        if sample == 0 {
+            current += 1
+            if current > longest {
+                longest = current
+            }
+        } else {
+            current = 0
+        }
+    }
+    return longest
+}
+
 func rms(_ samples: ArraySlice<Float>) -> Double {
     sqrt(samples.reduce(0) { $0 + Double($1) * Double($1) } / Double(max(samples.count, 1)))
 }

@@ -77,6 +77,24 @@ struct SignalGeneratorTests {
         #expect(SignalKind.allCases == [.tone, .silence])
     }
 
+    @Test("FR-4: setKind switches on the next render and keeps the phase")
+    func setKindSwitchesOnNextRender() {
+        var generator = SignalGenerator(kind: .tone, sampleRate: 48000)
+        let buffers = AudioTestBuffers(channels: 1, frames: 64)
+        generator.render(frameCount: 64, into: buffers.pointer)
+        #expect(buffers.samples(0).contains { $0 != 0 })
+        let phase = generator.phase
+        generator.setKind(.silence)
+        #expect(generator.kind == .silence)
+        #expect(generator.phase == phase)
+        generator.render(frameCount: 64, into: buffers.pointer)
+        #expect(buffers.samples(0).allSatisfy { $0 == 0 })
+        #expect(generator.phase == phase)
+        generator.setKind(.tone)
+        generator.render(frameCount: 64, into: buffers.pointer)
+        #expect(buffers.samples(0).contains { $0 != 0 })
+    }
+
     @Test("FR-4: phase is continuous across render calls of any size", arguments: [512, 37, 1])
     func phaseContinuity(chunk: Int) {
         let frames = 48000

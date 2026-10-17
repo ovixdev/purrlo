@@ -144,14 +144,6 @@ expect_signal() {
     python3 -I "$E2E_LIB/assert_signal.py" "$mode" "$wav"
 }
 
-# set_signal tone|silence: switches the signal and lets audio from before the switch drain.
-# The engine restart finishes before kactl returns, but the restart gap and samples already queued
-# in BlackHole's loopback can reach the first ~30 ms of a recording, which expect_signal would fail on.
-set_signal() {
-    kactl set signal "$1" >/dev/null
-    sleep 0.25
-}
-
 # call_count <substring>: how many recorded Bluetooth or helper calls contain the substring.
 call_count() {
     kactl calls | python3 -I -c 'import json, sys
