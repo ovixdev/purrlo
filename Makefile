@@ -53,7 +53,7 @@ test:
 	swift test --package-path $(PACKAGE) --enable-code-coverage
 	scripts/coverage.sh $(PACKAGE) 85
 	swift build --package-path $(PACKAGE) -c release --product KeepAliveCore
-	scripts/check_render_thread.py $(PACKAGE)/.build/release/KeepAliveCore.build
+	scripts/check_render_thread.py "$$(swift build --package-path $(PACKAGE) -c release --show-bin-path)"
 
 e2e: build-e2e
 	E2E_PRODUCTS="$(abspath $(E2E_PRODUCTS))" scripts/e2e/run-all.sh
