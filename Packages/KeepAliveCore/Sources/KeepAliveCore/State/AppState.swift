@@ -77,8 +77,11 @@ public final class AppState {
     public func start() {
         guard !started else { return }
         started = true
-        ports.deviceMonitor.start { [weak self] devices in self?.send(.devicesChanged(devices)) }
-        devices = ports.deviceMonitor.devices
+        ports.deviceMonitor.start { [weak self] devices in
+            guard let self else { return }
+            self.send(.devicesChanged(self.annotate(devices)))
+        }
+        devices = annotate(ports.deviceMonitor.devices)
         machine = KeepAliveMachine(
             config: Self.config(from: settings),
             devices: devices,
@@ -226,6 +229,16 @@ public final class AppState {
             ports.notifier.post(kind)
         case .allowSleep:
             ports.sleep.allowSleep()
+        }
+    }
+
+    /// The Bluetooth port stamps each device before the machine sees it. One call per list update.
+    private func annotate(_ list: [AudioDevice]) -> [AudioDevice] {
+        let controls = ports.bluetooth.controls(for: list)
+        return list.map { device in
+            var device = device
+            device.bluetoothControl = controls[device.uid] ?? .unavailable
+            return device
         }
     }
 

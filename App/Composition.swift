@@ -6,6 +6,8 @@ import KeepAliveCore
 enum Composition {
     static func makeAppState(arguments: [String] = CommandLine.arguments) -> AppState {
         let inactive = InactivePort()
+        let subsystem = Bundle.main.bundleIdentifier ?? KeepAliveCore.defaultSubsystem
+        let sleep = SleepCoordinator()
         var ports = AppState.Ports(
             deviceMonitor: CoreAudioDeviceMonitor(),
             engine: AUHALEngine(),
@@ -14,17 +16,23 @@ enum Composition {
             bluetooth: inactive,
             volume: inactive,
             notifier: inactive,
-            sleep: inactive,
+            sleep: sleep,
             scheduler: TaskScheduler(),
             loginItem: MainAppLoginItem()
         )
         #if E2E_HOOKS
+            // The E2E binary never constructs BluetoothController, so it never links a live IOBluetooth call.
             E2EHooks.configure(&ports, arguments: arguments)
+        #else
+            ports.bluetooth = BluetoothController(subsystem: subsystem)
         #endif
-        let subsystem = Bundle.main.bundleIdentifier ?? KeepAliveCore.defaultSubsystem
         let appState = AppState(settings: Settings(defaults: .standard), ports: ports, subsystem: subsystem)
         #if E2E_HOOKS
             E2EHooks.start(appState)
+        #else
+            sleep.install { [weak appState] event in
+                appState?.send(event)
+            }
         #endif
         return appState
     }

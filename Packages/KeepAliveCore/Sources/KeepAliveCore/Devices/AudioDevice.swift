@@ -40,6 +40,8 @@ public struct AudioDevice: Sendable, Equatable, Codable, Identifiable {
     public var outputChannels: Int
     public var nominalSampleRate: Double
     public var isAlive: Bool
+    /// Set by the Bluetooth port before the state machine sees the device. `.unavailable` until then.
+    public var bluetoothControl: BluetoothControl
 
     public init(
         uid: String,
@@ -48,7 +50,8 @@ public struct AudioDevice: Sendable, Equatable, Codable, Identifiable {
         transport: Transport,
         outputChannels: Int,
         nominalSampleRate: Double,
-        isAlive: Bool
+        isAlive: Bool,
+        bluetoothControl: BluetoothControl = .unavailable
     ) {
         self.uid = uid
         self.objectID = objectID
@@ -57,6 +60,7 @@ public struct AudioDevice: Sendable, Equatable, Codable, Identifiable {
         self.outputChannels = outputChannels
         self.nominalSampleRate = nominalSampleRate
         self.isAlive = isAlive
+        self.bluetoothControl = bluetoothControl
     }
 
     public var bluetoothAddress: BluetoothAddress? {

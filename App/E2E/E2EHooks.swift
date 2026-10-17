@@ -44,14 +44,12 @@
         private static var server: ControlServer?
         private static let recorder = CallRecorder()
 
-        /// Swaps in recording fakes for `--fake-bluetooth` and `--fake-helper` (PRD §6).
+        /// Recording fakes for the helper flag, and always for Bluetooth (the E2E build never calls IOBluetooth).
         static func configure(_ ports: inout AppState.Ports, arguments: [String]) {
             if arguments.contains("--fake-helper") {
                 ports.helper = recorder
             }
-            if arguments.contains("--fake-bluetooth") {
-                ports.bluetooth = recorder
-            }
+            ports.bluetooth = recorder
             ports.loginItem = FakeLoginItem()
         }
 

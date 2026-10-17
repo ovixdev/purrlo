@@ -13,9 +13,22 @@ public protocol HelperControlling: AnyObject {
 /// FR-11 and FR-12 (M2). `connect` is only ever reached from the single post-unlock reconnect (FR-5).
 @MainActor
 public protocol BluetoothControlling: AnyObject {
+    /// One pass over the device list. The default stamps a parseable UID as `.byAddress` and does not
+    /// call IOBluetooth, which is what the E2E build relies on.
+    func controls(for devices: [AudioDevice]) -> [String: BluetoothControl]
     func disconnect(uid: String)
     /// Returns whether `openConnection` succeeded.
     func connect(uid: String) async -> Bool
+}
+
+public extension BluetoothControlling {
+    func controls(for devices: [AudioDevice]) -> [String: BluetoothControl] {
+        var result: [String: BluetoothControl] = [:]
+        for device in devices {
+            result[device.uid] = BluetoothAddress(coreAudioUID: device.uid) != nil ? .byAddress : .unavailable
+        }
+        return result
+    }
 }
 
 /// FR-13 (M2): saves, zeroes and restores the target's output volume.

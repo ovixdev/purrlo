@@ -41,6 +41,8 @@ public enum KeepAliveEvent: Sendable, Equatable {
     case systemDidWake
     case screenUnlocked
     case reconnectFailed
+    /// EC-9: fast user switching. `false` is a resign, `true` is the session becoming active. Not an unlock.
+    case sessionActiveChanged(Bool)
 }
 
 public enum KeepAliveEffect: Sendable, Equatable {
@@ -85,6 +87,8 @@ public struct KeepAliveMachine: Sendable, Equatable {
     /// FR-13: a saved volume waits to be restored (persisted by the volume manager, EC-12).
     public private(set) var volumePending = false
     public private(set) var reconnectAttempts = 0
+    /// EC-9. A resign stops the engine without leaving Streaming; unlock forces this back to true.
+    private var sessionActive = true
     private var lastStartedDevice: AudioDevice?
     /// Latest device list, so a newly chosen target that is already present streams at once.
     private var devices: [AudioDevice]
@@ -119,6 +123,7 @@ public struct KeepAliveMachine: Sendable, Equatable {
         case .systemDidWake: break // Suspended waits for unlock; other states ignore wakes (§5 wake sequence).
         case .screenUnlocked: unlocked(&effects)
         case .reconnectFailed: reconnectFailed(&effects)
+        case let .sessionActiveChanged(active): sessionActive = active
         }
         reconcile(&effects, previous: previous)
         return effects
@@ -247,7 +252,7 @@ public struct KeepAliveMachine: Sendable, Equatable {
         effects.append(.cancelTimer(.volumeRestore))
         effects.append(.cancelTimer(.reconnectRetry))
         engineFailures = 0
-        if let target, target.bluetoothAddress != nil {
+        if let target, Self.canDisconnect(target) {
             if config.quietReconnect, !volumePending {
                 volumePending = true
                 effects.append(.saveAndZeroVolume(uid: target.uid))
@@ -265,6 +270,8 @@ public struct KeepAliveMachine: Sendable, Equatable {
     }
 
     private mutating func unlocked(_ effects: inout [KeepAliveEffect]) {
+        // Before the guard, so a resign delivered around sleep cannot block the post-unlock start.
+        sessionActive = true
         guard state == .suspended else { return }
         state = config.keepAlive ? .waiting : .off
         if target != nil {
@@ -332,6 +339,9 @@ public struct KeepAliveMachine: Sendable, Equatable {
         effects.append(.releaseAssertion)
     }
 
+}
+
+extension KeepAliveMachine {
     /// Brings engine, lid block and assertion in line with the state table of §5.
     private mutating func reconcile(_ effects: inout [KeepAliveEffect], previous: KeepAliveState) {
         // Waiting means "enabled, target not present": the moment it is present, stream.
@@ -349,7 +359,14 @@ public struct KeepAliveMachine: Sendable, Equatable {
     }
 
     /// Runs only in Streaming; while a failed start waits for its retry timer it stays stopped.
+    /// EC-9: an inactive session stops the engine and leaves state, failures, and the assertion alone.
     private mutating func reconcileEngine(_ effects: inout [KeepAliveEffect]) {
+        guard sessionActive else {
+            if engineRunning {
+                stopEngine(&effects)
+            }
+            return
+        }
         guard state == .streaming, let target else {
             // Error keeps its pending retry while the target is present.
             if engineRunning, state != .error || target == nil {
@@ -370,8 +387,10 @@ public struct KeepAliveMachine: Sendable, Equatable {
     }
 
     /// Set only in Streaming; cleared on any exit from Streaming and on every cut-off (§5, A4).
+    /// A session resign stops the engine but is not an exit, so a lid block stays put (EC-9, M3 revisits it).
     private mutating func reconcileLidBlock(_ effects: inout [KeepAliveEffect], leftStreaming: Bool) {
-        let wanted = state == .streaming && engineRunning && config.lidClosedMode && !cutOffActive
+        let runningForLid = engineRunning || (state == .streaming && !sessionActive)
+        let wanted = state == .streaming && runningForLid && config.lidClosedMode && !cutOffActive
         if wanted, !lidBlockSet {
             lidBlockSet = true
             effects.append(.setLidBlock(true))
@@ -396,6 +415,11 @@ public struct KeepAliveMachine: Sendable, Equatable {
     private static func needsRestart(_ old: AudioDevice, _ new: AudioDevice) -> Bool {
         old.objectID != new.objectID || old.nominalSampleRate != new.nominalSampleRate
             || old.outputChannels != new.outputChannels
+    }
+
+    /// §6: disconnect and the one reconnect only when the port stamped an address or a unique paired name.
+    private static func canDisconnect(_ device: AudioDevice) -> Bool {
+        device.bluetoothControl == .byAddress || device.bluetoothControl == .byUniqueName
     }
 
     private static func findTarget(_ uid: String?, in devices: [AudioDevice]) -> AudioDevice? {
