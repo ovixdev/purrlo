@@ -1,7 +1,33 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "About" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } } } },
+    "Battery cut-off — not in this version" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Battery cut-off — not in this version" } } } },
+    "Check automatically" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Check automatically" } } } },
+    "Check for Updates…" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Check for Updates…" } } } },
+    "Choose a speaker" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a speaker" } } } },
+    "Copy Diagnostics" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Diagnostics" } } } },
+    "Disconnect before sleep" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Disconnect before sleep" } } } },
+    "FAQ" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "FAQ" } } } },
+    "Help" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Help" } } } },
+    "Inaudible tone" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Inaudible tone" } } } },
+    "Keep a speaker connected" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep a speaker connected" } } } },
+    "Keep alive" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep alive" } } } },
+    "Launch at Login" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at Login" } } } },
+    "MIT License" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "MIT License" } } } },
+    "No output devices" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No output devices" } } } },
+    "Prevent idle sleep" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Prevent idle sleep" } } } },
+    "Purrlo can't match this speaker to a paired Bluetooth device, so it won't disconnect or reconnect it." : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Purrlo can't match this speaker to a paired Bluetooth device, so it won't disconnect or reconnect it." } } } },
+    "Quit" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit" } } } },
+    "Reconnect after unlock" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Reconnect after unlock" } } } },
+    "Signal" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Signal" } } } },
+    "Silence" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Silence" } } } },
+    "Sleep" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sleep" } } } },
+    "Sleep Now — not in this version" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sleep Now — not in this version" } } } },
+    "Speaker" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Speaker" } } } },
+    "Start" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Start" } } } },
+    "Stay awake with lid closed — not in this version" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Stay awake with lid closed — not in this version" } } } },
+    "Updates aren't set up yet" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Updates aren't set up yet" } } } }
   },
   "version" : "1.0"
 }

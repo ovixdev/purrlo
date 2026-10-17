@@ -19,7 +19,7 @@ check "E2E-2, FR-9: PreventUserIdleSystemSleep held by the app" expect_assertion
 check "E2E-2, FR-8: status says streaming and why sleep is blocked" \
     expect_status text "Streaming to $TARGET_NAME · Sleep blocked while $TARGET_NAME is connected"
 
-kactl set signal silence >/dev/null
+set_signal silence
 check "E2E-2, FR-4: Silence sends only zeros" expect_signal silence 1.5
 check "E2E-2, FR-4: the target keeps running in Silence mode" within 1 test "$(kactl device-running "$TARGET_UID")" = 1
 check "E2E-2, FR-3: still Streaming in Silence mode" expect_status state streaming
@@ -31,5 +31,5 @@ check "E2E-2, FR-8: status says why sleep is allowed" \
 kactl set preventIdleSleep true >/dev/null
 check "E2E-2, FR-9: turning it back on holds the assertion again" expect_assertion_held
 
-kactl set signal tone >/dev/null
+set_signal tone
 check "E2E-2, FR-4: switching back to the tone restores it" expect_signal tone

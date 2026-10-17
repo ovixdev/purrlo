@@ -34,6 +34,166 @@ ask() {
     done
 }
 
+# A disconnect or a sleep needs a typed "go", so stray input (a pipe, a pasted line) can never start one.
+confirm_go() {
+    local answer=""
+    while [ "$answer" != "go" ]; do
+        printf '%s' "$1"
+        read -r answer || exit 1
+    done
+}
+
+# E2E-H3. Drives the Debug app (it has real Bluetooth; the E2E app does not) and reads the unified log.
+run_h3() {
+    local debug_app nap start_stamp log_file announced appeared passed
+    debug_app="${DEBUG_APP:-$ROOT/build/DerivedData/Build/Products/Debug/Purrlo.app}"
+    [ -d "$debug_app" ] || { echo "Debug build missing; run make e2e-hardware-h3"; exit 1; }
+    [ -x "$KACTL" ] || { echo "kactl missing; run make e2e-hardware-h3"; exit 1; }
+
+    nap="$(pmset -g 2>/dev/null | awk 'tolower($1) == "powernap" { print $2; exit }')"
+    if [ "$nap" != "1" ]; then
+        echo "Power Nap is off, so this run would not exercise a dark wake."
+        echo "Turn it on yourself, then run this again:"
+        echo "  sudo pmset -a powernap 1"
+        exit 1
+    fi
+
+    say "Purrlo hardware suite: E2E-H3 (overnight Power Nap)"
+    cat <<EOF
+This sleeps the Mac with \`pmset sleepnow\` and checks the Debug app's log after you wake it.
+The E2E app is not used: it has no Bluetooth.
+
+Before you start:
+  - Quit Purrlo if it is running.
+  - Connect the speaker. Launch will be the Debug build at:
+      $debug_app
+  - In the menu, pick that speaker and wait until the status says Streaming.
+  - Plug in power. Lid open. Power Nap is already on; this script will not change it.
+  - macOS may ask for Bluetooth permission for Purrlo at launch. Allow it.
+  - If the speaker is still disconnected at the end, kactl may ask for Bluetooth permission
+    for this terminal, and only then, to reconnect it. This script never disconnects by itself.
+
+Stdin from /dev/null stops at the next question, before sleep and before any Bluetooth command.
+EOF
+
+    if pgrep -x Purrlo >/dev/null; then
+        echo "Purrlo is running. Quit it from its menu, then run this again."
+        exit 1
+    fi
+
+    confirm_go "Type go and press Return when you have read this. The Mac will not sleep yet: "
+    open "$debug_app"
+    echo "Pick the speaker in the Purrlo menu and wait until it says Streaming."
+    confirm_go "Type go and press Return to sleep the Mac now: "
+
+    start_stamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    pmset sleepnow
+    sleep 3
+
+    log_file="$ROOT/build/e2e-h3.log"
+    mkdir -p "$ROOT/build"
+    log show --info --start "$start_stamp" --style compact \
+        --predicate 'subsystem == "io.github.ovixdev.purrlo"' >"$log_file" 2>/dev/null || true
+
+    announced="$(ask "Did the speaker announce itself before you unlocked?" "a) no|b) yes")"
+    appeared="$(ask "Did the speaker show up in the menu before you unlocked?" "a) no|b) yes")"
+    restore_choice="$(ask "Is the speaker still disconnected?" "a) no, it is connected|b) yes, reconnect it")"
+    if [ "$restore_choice" = "b" ]; then
+        echo "Reconnecting uses kactl spike. macOS may ask to allow Bluetooth for this terminal."
+        restore_speaker
+    fi
+
+    VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$debug_app/Contents/Info.plist")"
+    REPORT="$ROOT/e2e-report-$VERSION-$MAC_MODEL.json"
+    if python3 -I - "$REPORT" "$log_file" "$announced" "$appeared" "$SPEAKER_NAME_H3" "$VERSION" "$MAC_MODEL" <<'PY'
+import json, os, platform, sys
+report_path, log_path, announced, appeared, speaker, version, mac = sys.argv[1:8]
+lines = []
+if os.path.exists(log_path):
+    lines = [line for line in open(log_path, errors="replace") if "-->" in line]
+unlock_at = next((i for i, line in enumerate(lines) if "screenUnlocked" in line), None)
+disconnects = [line for line in lines if "systemWillSleep" in line and "disconnectBluetooth" in line]
+if unlock_at is None:
+    connects_before, connects_after = [line for line in lines if "connectBluetooth" in line], []
+else:
+    connects_before = [line for line in lines[:unlock_at] if "connectBluetooth" in line]
+    connects_after = [line for line in lines[unlock_at:] if "connectBluetooth" in line]
+passed = len(disconnects) == 1 and len(connects_before) == 0 and len(connects_after) == 1
+result = {
+    "id": "E2E-H3",
+    "scenario": "Power Nap: disconnect on sleep, reconnect once after unlock",
+    "announced_before_unlock": announced == "b",
+    "device_appeared_before_unlock": appeared == "b",
+    "disconnect_on_will_sleep": len(disconnects),
+    "connect_before_unlock": len(connects_before),
+    "connect_after_unlock": len(connects_after),
+    "passed": passed,
+}
+report = {}
+if os.path.exists(report_path):
+    with open(report_path) as handle:
+        report = json.load(handle)
+report.setdefault("suite", "hardware")
+report["version"] = version or report.get("version")
+report["mac"] = mac or report.get("mac")
+report["macos"] = platform.mac_ver()[0]
+if speaker:
+    report["speaker"] = speaker
+results = [item for item in report.get("results", []) if item.get("id") != "E2E-H3"]
+results.append(result)
+report["results"] = results
+with open(report_path, "w") as handle:
+    json.dump(report, handle, indent=2)
+    handle.write("\n")
+sys.exit(0 if passed else 1)
+PY
+    then
+        passed=true
+    else
+        passed=false
+    fi
+    say "E2E-H3 result: $([ "$passed" = true ] && echo passed || echo failed)"
+    echo "Log: $log_file"
+    echo "Report: $REPORT"
+    [ "$passed" = true ]
+}
+
+restore_speaker() {
+    local choice
+    H3_UIDS=()
+    H3_NAMES=()
+    while IFS= read -r line; do
+        H3_UIDS+=("$(printf '%s' "$line" | python3 -I -c 'import json, sys; print(json.load(sys.stdin)["uid"])')")
+        H3_NAMES+=("$(printf '%s' "$line" | python3 -I -c 'import json, sys; print(json.load(sys.stdin)["name"])')")
+    done < <(kactl spike outputs | grep '"bluetooth":true' || true)
+    if [ "${#H3_UIDS[@]}" -eq 0 ]; then
+        echo "No Bluetooth output is connected, and none is listed to reconnect."
+        return 0
+    fi
+    say "Bluetooth outputs"
+    for i in "${!H3_NAMES[@]}"; do echo "  $((i + 1))) ${H3_NAMES[$i]}"; done
+    choice=1
+    if [ "${#H3_UIDS[@]}" -gt 1 ]; then
+        printf 'Which one should be reconnected? > '
+        read -r choice || exit 1
+    fi
+    kactl spike connect "${H3_UIDS[$((choice - 1))]}" || true
+    SPEAKER_NAME_H3="${H3_NAMES[$((choice - 1))]}"
+}
+
+SPEAKER_NAME_H3=""
+case "${1:-h4}" in
+    h3)
+        run_h3
+        exit
+        ;;
+    h4) ;;
+    *)
+        echo "usage: hardware.sh [h3|h4]" >&2
+        exit 64
+        ;;
+esac
+
 say "Purrlo hardware suite: E2E-H4 (FR-13 quiet reconnect spike)"
 cat <<EOF
 This test disconnects and reconnects your speaker twice with kactl, once with the Mac-side volume
@@ -108,24 +268,15 @@ reconnect() {
     printf '%s' "$after"
 }
 
-# A disconnect needs a typed "go", so stray input (a pipe, a pasted line) can never start one.
-confirm_go() {
-    local answer=""
-    while [ "$answer" != "go" ]; do
-        printf 'Type go and press Return when you are ready to listen: '
-        read -r answer || exit 1
-    done
-}
-
 HEARD='a) no announcement at all|b) announcement, quieter than usual|c) announcement at its usual loudness'
 
 say "Run 1 of 2: Mac-side volume 0"
-confirm_go
+confirm_go "Type go and press Return when you are ready to listen: "
 VOLUME_AFTER_ZERO="$(reconnect 0)"
 HEARD_AT_ZERO="$(ask "What did you hear?" "$HEARD")"
 
 say "Run 2 of 2: Mac-side volume 50%"
-confirm_go
+confirm_go "Type go and press Return when you are ready to listen: "
 VOLUME_AFTER_HALF="$(reconnect 0.5)"
 HEARD_AT_HALF="$(ask "What did you hear?" "$HEARD")"
 

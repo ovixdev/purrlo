@@ -9,10 +9,12 @@ app (over the E2E control socket):
   status                              current state as JSON
   devices                             output devices as the app sees them
   set-target <uid>                    choose the target speaker
-  set <setting> <value>               keepAlive|preventIdleSleep|launchAtLogin true|false, signal tone|silence
+  set <setting> <value>               keepAlive, preventIdleSleep, disconnectBeforeSleep,
+                                      reconnectAfterUnlock, launchAtLogin true|false; signal tone|silence
   transitions                         ordered transition log since launch
   calls                               Bluetooth and helper calls recorded by --fake-* ports
   wait <state> [--timeout <s>]        poll until the app is in <state>; prints the seconds it took
+  simulate will-sleep|did-wake|unlock inject a sleep, wake, or unlock event
   quit                                quit the app gracefully
 
 virtual devices (CoreAudio):

@@ -63,6 +63,7 @@ public extension KeepAliveEvent {
         case .systemDidWake: "systemDidWake"
         case .screenUnlocked: "screenUnlocked"
         case .reconnectFailed: "reconnectFailed"
+        case let .sessionActiveChanged(active): "sessionActiveChanged(\(active))"
         }
     }
 }
@@ -93,7 +94,7 @@ public extension KeepAliveEffect {
 }
 
 /// Bluetooth UIDs embed the speaker's hardware address; logs keep only its last two bytes (NFR-9).
-func logUID(_ uid: String) -> String {
+public func logUID(_ uid: String) -> String {
     guard BluetoothAddress(coreAudioUID: uid) != nil else { return uid }
     return "bt…" + uid.prefix { $0 != ":" }.suffix(5)
 }

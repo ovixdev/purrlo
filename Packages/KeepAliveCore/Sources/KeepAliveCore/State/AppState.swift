@@ -46,6 +46,8 @@ public final class AppState {
     public private(set) var machine: KeepAliveMachine
     public private(set) var devices: [AudioDevice] = []
     public private(set) var launchAtLogin: Bool
+    /// FR-18. The E2E app never presents the window; the flag itself is still stored.
+    public private(set) var needsFirstRun: Bool
     /// Last error from a user action that failed outside the machine, such as Launch at Login.
     public private(set) var lastError: String?
     @ObservationIgnored public let log = TransitionLog()
@@ -63,6 +65,7 @@ public final class AppState {
         logger = Logger(subsystem: subsystem, category: "state")
         machine = KeepAliveMachine(config: Self.config(from: settings), volumePending: ports.volume.hasPendingRestore)
         launchAtLogin = ports.loginItem.isEnabled
+        needsFirstRun = !settings.didCompleteFirstRun
     }
 
     public var status: StatusLine {
@@ -77,8 +80,11 @@ public final class AppState {
     public func start() {
         guard !started else { return }
         started = true
-        ports.deviceMonitor.start { [weak self] devices in self?.send(.devicesChanged(devices)) }
-        devices = ports.deviceMonitor.devices
+        ports.deviceMonitor.start { [weak self] devices in
+            guard let self else { return }
+            send(.devicesChanged(annotate(devices)))
+        }
+        devices = annotate(ports.deviceMonitor.devices)
         machine = KeepAliveMachine(
             config: Self.config(from: settings),
             devices: devices,
@@ -119,6 +125,32 @@ public final class AppState {
     public func setPreventIdleSleep(_ enabled: Bool) {
         settings.preventIdleSleep = enabled
         configChanged()
+    }
+
+    /// FR-11.
+    public func setDisconnectBeforeSleep(_ enabled: Bool) {
+        settings.disconnectBeforeSleep = enabled
+        configChanged()
+    }
+
+    /// FR-12.
+    public func setReconnectAfterUnlock(_ enabled: Bool) {
+        settings.reconnectAfterUnlock = enabled
+        configChanged()
+    }
+
+    /// FR-18. Start on the first-run window.
+    public func completeFirstRun() {
+        settings.didCompleteFirstRun = true
+        needsFirstRun = false
+    }
+
+    /// EC-18: the live Bluetooth target could not be matched to one paired device.
+    public var bluetoothMatchWarning: String? {
+        guard let target = machine.target, target.transport.isBluetooth, target.bluetoothControl == .unavailable else {
+            return nil
+        }
+        return "Purrlo can't match this speaker to a paired Bluetooth device, so it won't disconnect or reconnect it."
     }
 
     /// FR-7.
@@ -229,12 +261,24 @@ public final class AppState {
         }
     }
 
+    /// The Bluetooth port stamps each device before the machine sees it. One call per list update.
+    private func annotate(_ list: [AudioDevice]) -> [AudioDevice] {
+        let controls = ports.bluetooth.controls(for: list)
+        return list.map { device in
+            var device = device
+            device.bluetoothControl = controls[device.uid] ?? .unavailable
+            return device
+        }
+    }
+
     private static func config(keepAlive: Bool? = nil, from settings: Settings) -> KeepAliveConfig {
         var config = KeepAliveConfig()
         config.keepAlive = keepAlive ?? settings.keepAlive
         config.targetUID = settings.targetUID
         config.signal = settings.signal
         config.preventIdleSleep = settings.preventIdleSleep
+        config.disconnectBeforeSleep = settings.disconnectBeforeSleep
+        config.reconnectAfterUnlock = settings.reconnectAfterUnlock
         return config
     }
 }

@@ -105,6 +105,11 @@ reset_app_state() { defaults delete "$BUNDLE_ID" >/dev/null 2>&1 || true; }
 vdev_create() { kactl vdev create --name "$TARGET_NAME" --uid "$TARGET_UID" >/dev/null; }
 vdev_destroy() { kactl vdev destroy --uid "$TARGET_UID"; }
 
+# The app has seen the target go away. A sleep scenario must wait for this before `simulate unlock`,
+# or the reducer still sees the target and takes the "came back on its own" path (§5 wake step 5).
+target_gone() { ! kactl devices | grep -qF "\"$TARGET_UID\""; }
+wait_target_gone() { within 2 target_gone >/dev/null || { echo "app still lists $TARGET_UID" >&2; return 1; }; }
+
 # Streaming to the virtual target, with fresh settings.
 start_streaming() {
     reset_app_state
@@ -137,6 +142,27 @@ expect_signal() {
     wav="$ARTIFACTS/$SCENARIO.$mode.$TESTS.wav"
     kactl record --device "$BLACKHOLE" --seconds "$seconds" --out "$wav"
     python3 -I "$E2E_LIB/assert_signal.py" "$mode" "$wav"
+}
+
+# set_signal tone|silence: switches the signal and lets audio from before the switch drain.
+# The engine restart finishes before kactl returns, but the restart gap and samples already queued
+# in BlackHole's loopback can reach the first ~30 ms of a recording, which expect_signal would fail on.
+set_signal() {
+    kactl set signal "$1" >/dev/null
+    sleep 0.25
+}
+
+# call_count <substring>: how many recorded Bluetooth or helper calls contain the substring.
+call_count() {
+    kactl calls | python3 -I -c 'import json, sys
+r = json.load(sys.stdin)["result"]
+print(sum(1 for c in r if sys.argv[1] in c["call"]))' "$1"
+}
+
+expect_call_count() {
+    local needle="$1" expected="$2" actual
+    actual="$(call_count "$needle")"
+    [ "$actual" = "$expected" ] || { echo "$needle is $actual, expected $expected"; kactl calls; return 1; }
 }
 
 # within <seconds> <command...>: retries every 20 ms, about <seconds> worth of attempts, then shows the last output.

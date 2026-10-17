@@ -183,5 +183,7 @@ func speaker(
 let echoUID = "E8-4C-4A-8A-9A-39:output"
 
 func echo(id: UInt32 = 20, rate: Double = 44100) -> AudioDevice {
-    speaker(uid: echoUID, id: id, name: "Echo Dot", rate: rate, transport: .bluetooth)
+    var device = speaker(uid: echoUID, id: id, name: "Echo Dot", rate: rate, transport: .bluetooth)
+    device.bluetoothControl = .byAddress
+    return device
 }

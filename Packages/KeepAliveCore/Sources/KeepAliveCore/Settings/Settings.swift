@@ -9,6 +9,9 @@ public final class Settings {
         static let keepAlive = "keepAlive"
         static let signal = "signal"
         static let preventIdleSleep = "preventIdleSleep"
+        static let disconnectBeforeSleep = "disconnectBeforeSleep"
+        static let reconnectAfterUnlock = "reconnectAfterUnlock"
+        static let didCompleteFirstRun = "didCompleteFirstRun"
     }
 
     private let defaults: UserDefaults
@@ -58,6 +61,24 @@ public final class Settings {
     public var preventIdleSleep: Bool {
         get { bool(Key.preventIdleSleep, default: true) }
         set { defaults.set(newValue, forKey: Key.preventIdleSleep) }
+    }
+
+    /// FR-11: on by default.
+    public var disconnectBeforeSleep: Bool {
+        get { bool(Key.disconnectBeforeSleep, default: true) }
+        set { defaults.set(newValue, forKey: Key.disconnectBeforeSleep) }
+    }
+
+    /// FR-12: on by default.
+    public var reconnectAfterUnlock: Bool {
+        get { bool(Key.reconnectAfterUnlock, default: true) }
+        set { defaults.set(newValue, forKey: Key.reconnectAfterUnlock) }
+    }
+
+    /// FR-18: false until the first-run window's Start button.
+    public var didCompleteFirstRun: Bool {
+        get { bool(Key.didCompleteFirstRun, default: false) }
+        set { defaults.set(newValue, forKey: Key.didCompleteFirstRun) }
     }
 
     private func bool(_ key: String, default fallback: Bool) -> Bool {

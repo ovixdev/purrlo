@@ -8,7 +8,7 @@ DERIVED := build/DerivedData
 E2E_PRODUCTS := $(DERIVED)/Build/Products/E2E
 XCODEBUILD := xcodebuild -project $(PROJECT) -derivedDataPath $(DERIVED) -destination "platform=macOS,arch=$(shell uname -m)" -quiet
 
-.PHONY: bootstrap generate build build-release build-e2e check-release lint format test e2e e2e-hardware clean
+.PHONY: bootstrap generate build build-release build-e2e check-release lint format test e2e e2e-hardware e2e-hardware-h3 clean
 
 bootstrap:
 	brew install xcodegen swiftlint swiftformat
@@ -60,6 +60,11 @@ e2e: build-e2e
 
 e2e-hardware: build-e2e
 	E2E_PRODUCTS="$(abspath $(E2E_PRODUCTS))" scripts/e2e/hardware.sh
+
+# E2E-H3: overnight Power Nap against the Debug app. A person runs this. CI does not.
+e2e-hardware-h3: build build-e2e
+	DEBUG_APP="$(abspath $(DERIVED)/Build/Products/Debug/Purrlo.app)" \
+	E2E_PRODUCTS="$(abspath $(E2E_PRODUCTS))" scripts/e2e/hardware.sh h3
 
 clean:
 	rm -rf build $(PROJECT) $(PACKAGE)/.build

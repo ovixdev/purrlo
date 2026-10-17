@@ -272,6 +272,41 @@ final class AppStateTests {
         #expect(fired == ["second"])
     }
 
+    @Test("FR-11, FR-12: disconnect and reconnect settings survive a relaunch")
+    func sleepSettingsPersist() throws {
+        let first = try makeState()
+        first.start()
+        first.setDisconnectBeforeSleep(false)
+        first.setReconnectAfterUnlock(false)
+        let second = try makeState()
+        second.start()
+        #expect(!second.machine.config.disconnectBeforeSleep)
+        #expect(!second.machine.config.reconnectAfterUnlock)
+    }
+
+    @Test("FR-18: first run stays incomplete until marked done")
+    func firstRunStaysUntilDone() throws {
+        let state = try makeState()
+        #expect(state.needsFirstRun)
+        state.completeFirstRun()
+        #expect(!state.needsFirstRun)
+        let relaunch = try makeState()
+        #expect(!relaunch.needsFirstRun)
+    }
+
+    @Test("EC-18: an unmatched Bluetooth target produces the menu warning")
+    func unmatchedBluetoothWarning() throws {
+        let device = speaker(uid: "kitchen", name: "Kitchen", transport: .bluetooth)
+        monitor.publish([device])
+        let state = try makeState()
+        state.start()
+        state.selectTarget(uid: "kitchen")
+        #expect(state.bluetoothMatchWarning?.contains("won't disconnect") == true)
+        state.selectTarget(uid: echoUID)
+        monitor.publish([device, echo()])
+        #expect(state.bluetoothMatchWarning == nil)
+    }
+
     @Test("InactivePort does nothing and never connects (FR-5 in M1 builds)")
     func inactivePort() async {
         let port = InactivePort()

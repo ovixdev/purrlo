@@ -44,14 +44,12 @@
         private static var server: ControlServer?
         private static let recorder = CallRecorder()
 
-        /// Swaps in recording fakes for `--fake-bluetooth` and `--fake-helper` (PRD §6).
+        /// Recording fakes for the helper flag, and always for Bluetooth (the E2E build never calls IOBluetooth).
         static func configure(_ ports: inout AppState.Ports, arguments: [String]) {
             if arguments.contains("--fake-helper") {
                 ports.helper = recorder
             }
-            if arguments.contains("--fake-bluetooth") {
-                ports.bluetooth = recorder
-            }
+            ports.bluetooth = recorder
             ports.loginItem = FakeLoginItem()
         }
 
@@ -100,8 +98,21 @@
                     NSApplication.shared.terminate(nil)
                 }
                 return encode(ControlSuccess(result: "quitting"))
+            case let ("simulate", args) where args.count == 1:
+                let action = args[0]
+                switch action {
+                case "will-sleep": appState.send(.systemWillSleep)
+                case "did-wake": appState.send(.systemDidWake)
+                case "unlock": appState.send(.screenUnlocked)
+                default:
+                    throw CommandError(
+                        description: "simulate accepts will-sleep, did-wake, or unlock; "
+                            + "\(action) arrives with lid mode (M3)"
+                    )
+                }
+                return encode(ControlSuccess(result: status(appState)))
             case ("simulate", _):
-                throw CommandError(description: "simulate arrives with sleep handling (M2) and lid mode (M3)")
+                throw CommandError(description: "simulate accepts will-sleep, did-wake, or unlock")
             default:
                 throw CommandError(
                     description: "unknown command: \(request.cmd) \(request.args.joined(separator: " "))"
@@ -121,6 +132,8 @@
             switch key {
             case "keepAlive": try appState.setKeepAlive(bool())
             case "preventIdleSleep": try appState.setPreventIdleSleep(bool())
+            case "disconnectBeforeSleep": try appState.setDisconnectBeforeSleep(bool())
+            case "reconnectAfterUnlock": try appState.setReconnectAfterUnlock(bool())
             case "launchAtLogin": try appState.setLaunchAtLogin(bool())
             case "fake-connect": recorder.connectSucceeds = value == "succeed"
             case "signal":
