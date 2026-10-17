@@ -1,4 +1,4 @@
-# Purrlo developer entry points (PRD §9): make test | e2e | e2e-hardware.
+# Purrlo developer entry points (PRD §9): make check | test | e2e | e2e-hardware.
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
@@ -12,6 +12,7 @@ XCODEBUILD := xcodebuild -project $(PROJECT) -derivedDataPath $(DERIVED) -destin
 
 bootstrap:
 	brew install xcodegen swiftlint swiftformat
+	git config core.hooksPath .githooks
 
 generate:
 	xcodegen generate --quiet
@@ -28,6 +29,16 @@ build-e2e: generate
 # NFR-10: the Release binary contains no E2E test hooks.
 check-release: build-release
 	scripts/check-release-hooks.sh $(DERIVED)/Build/Products/Release/Purrlo.app
+
+.PHONY: check check-xcode
+
+# Everything CI runs, in one target. The pre-push hook calls it (AGENTS.md).
+check: check-xcode lint test check-release e2e
+
+# CI selects the Xcode in .xcode-version; a different local Xcode can pass here and fail there.
+check-xcode:
+	@want="$$(cat .xcode-version)"; have="$$(xcodebuild -version | awk 'NR == 1 { print $$2 }')"; \
+	[ "$$want" = "$$have" ] || { echo "Xcode $$have is selected, but .xcode-version (used by CI) pins $$want"; exit 1; }
 
 lint:
 	swiftformat --lint .
