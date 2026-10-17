@@ -46,7 +46,8 @@ public final class AUHALEngine: KeepAliveEngine {
         // Stopping the unit to change tone/silence lets the loopback clock run ahead of the output.
         // BlackHole then fills the input with exact zeros (a 32 ms run, 2.2 s into E2E-2's second tone).
         if unit != nil, boundObjectID == device.objectID, boundSampleRate == device.nominalSampleRate,
-           boundChannels == device.outputChannels, let generator {
+           boundChannels == device.outputChannels, let generator
+        {
             SignalGenerator.storeKind(signal, in: generator)
             return
         }

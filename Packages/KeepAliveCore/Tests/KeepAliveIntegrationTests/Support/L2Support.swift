@@ -50,7 +50,9 @@ func longestZeroRun(_ samples: ArraySlice<Float>) -> Int {
     for sample in samples {
         if sample == 0 {
             current += 1
-            if current > longest { longest = current }
+            if current > longest {
+                longest = current
+            }
         } else {
             current = 0
         }
