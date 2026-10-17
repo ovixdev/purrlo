@@ -28,6 +28,23 @@ struct SleepCoordinatorTests {
         }
     }
 
+    private final class Notes: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [SleepNote] = []
+
+        func append(_ note: SleepNote) {
+            lock.lock()
+            items.append(note)
+            lock.unlock()
+        }
+
+        var isEmpty: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return items.isEmpty
+        }
+    }
+
     private func make(
         locked: Bool = false, watchdog: TimeInterval = SleepCoordinator.watchdogSeconds, box: Box
     ) -> SleepCoordinator {
@@ -62,7 +79,7 @@ struct SleepCoordinatorTests {
     func canSystemSleep() {
         let box = Box()
         let allowance = SleepAllowance(deadline: 5) { box.allow($0) }
-        var notes: [SleepNote] = []
+        let notes = Notes()
         routeSystemPowerMessage(
             UInt32(kIOMessageCanSystemSleep), token: 3, allowance: allowance
         ) { notes.append($0) }
@@ -84,7 +101,7 @@ struct SleepCoordinatorTests {
     func poweredOnIsIgnored() {
         let box = Box()
         let allowance = SleepAllowance(deadline: 5) { box.allow($0) }
-        var notes: [SleepNote] = []
+        let notes = Notes()
         routeSystemPowerMessage(
             UInt32(kIOMessageSystemHasPoweredOn), token: 1, allowance: allowance
         ) { notes.append($0) }

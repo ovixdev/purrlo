@@ -74,6 +74,14 @@ final class SleepAllowance: @unchecked Sendable {
     }
 }
 
+// IOKit's kIOMessage* power constants are function-like C macros that Swift does not import.
+// Values from <IOKit/IOMessage.h>: iokit_common_msg(x) == 0xE0000000 | x.
+let kIOMessageCanSystemSleep: UInt32 = 0xE000_0270
+let kIOMessageSystemWillSleep: UInt32 = 0xE000_0280
+let kIOMessageSystemWillNotSleep: UInt32 = 0xE000_0290
+let kIOMessageSystemHasPoweredOn: UInt32 = 0xE000_0300
+let kIOMessageSystemWillPowerOn: UInt32 = 0xE000_0320
+
 /// Maps an IOKit system-power message onto an immediate allow or a main-actor note.
 func routeSystemPowerMessage(
     _ message: UInt32,
@@ -256,10 +264,10 @@ public final class SleepCoordinator: SleepAcknowledging {
 }
 
 /// `CGSSessionScreenIsLocked` is present and true when the screen is locked, and absent otherwise.
-enum ScreenLock {
-    static func isLocked() -> Bool {
-        guard let dictionary = copySessionDictionary() else { return false }
-        guard let value = dictionary.object(forKey: "CGSSessionScreenIsLocked") else { return false }
+public enum ScreenLock {
+    public static func isLocked() -> Bool {
+        guard let dictionary = copySessionDictionary(),
+              let value = dictionary.object(forKey: "CGSSessionScreenIsLocked") else { return false }
         return (value as? NSNumber)?.boolValue ?? false
     }
 
