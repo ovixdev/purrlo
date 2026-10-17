@@ -7,7 +7,7 @@ package="$1"
 minimum="$2"
 json="$(swift test --package-path "$package" --show-codecov-path)"
 
-python3 -I - "$json" "$minimum" "$(cd "$package" && pwd)/Sources/" <<'PY'
+python3 -I - "$json" "$minimum" "$(cd "$package" && pwd)/Sources/KeepAliveCore/" <<'PY'
 import json, sys
 
 path, minimum, sources = sys.argv[1], float(sys.argv[2]), sys.argv[3]
