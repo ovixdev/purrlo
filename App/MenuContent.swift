@@ -74,6 +74,8 @@ struct MenuContent: View {
         .accessibilityLabel(entry.uid == selected ? "\(entry.title), selected speaker" : entry.title)
     }
 
+    /// Callers pass closures (`{ appState.setSignal($0) }`), not method references (`appState.setSignal`):
+    /// converting a main-actor method reference here crashes Swift 6.3's IR generation.
     private func binding<Value>(
         _ keyPath: KeyPath<KeepAliveMachine, Value>,
         _ set: @escaping @MainActor (Value) -> Void

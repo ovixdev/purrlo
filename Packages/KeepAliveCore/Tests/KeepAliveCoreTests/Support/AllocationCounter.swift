@@ -48,6 +48,11 @@ enum AllocationCounter {
 
     /// Makes sure the page holding `malloc_logger` is writable, raising its protection if the maximum allows it.
     private static func prepareHook() -> String? {
+        // On macOS 26 the hook crashes the test process with SIGBUS once libmalloc calls it (seen on the
+        // macos-26 CI runner); it is verified on 27. scripts/check_render_thread.py covers NFR-3 everywhere.
+        guard ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27 else {
+            return "malloc_logger hooks crash on macOS 26 and earlier; the static NFR-3 check covers this OS"
+        }
         guard let logger else { return "libmalloc exports no malloc_logger" }
         var address = mach_vm_address_t(UInt(bitPattern: logger))
         var size: mach_vm_size_t = 0

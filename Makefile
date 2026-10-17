@@ -37,10 +37,12 @@ format:
 	swiftformat .
 	swiftlint lint --fix --quiet
 
-# L1 + L2 with the 85% line-coverage gate on KeepAliveCore (PRD §8).
+# L1 + L2 with the 85% line-coverage gate on KeepAliveCore (PRD §8), then the static NFR-3 render-thread check.
 test:
 	swift test --package-path $(PACKAGE) --enable-code-coverage
 	scripts/coverage.sh $(PACKAGE) 85
+	swift build --package-path $(PACKAGE) -c release --product KeepAliveCore
+	scripts/check_render_thread.py $(PACKAGE)/.build/release/KeepAliveCore.build
 
 e2e: build-e2e
 	E2E_PRODUCTS="$(abspath $(E2E_PRODUCTS))" scripts/e2e/run-all.sh
