@@ -36,19 +36,23 @@ jobs:
 
   macos:
     # One macOS job: runner minutes are the expensive part, and BlackHole is installed once for L2 and L3.
-    name: Tests and E2E (macOS 26, Xcode 26.6)
+    name: Tests and E2E (macOS 26)
     runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Select Xcode 26.6
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app && xcodebuild -version
+      - name: Select the Xcode in .xcode-version
+        run: sudo xcode-select -s "/Applications/Xcode_$(cat .xcode-version).app" && make check-xcode
       - name: Install XcodeGen
         run: HOMEBREW_NO_AUTO_UPDATE=1 brew install xcodegen
       - name: Set up the CI test environment (BlackHole)
         run: scripts/e2e/setup-ci.sh
+
+      # App compile errors surface here, before the slower package tests.
+      - name: Build the E2E app
+        run: make build-e2e
 
       - name: L1 + L2 with the 85% coverage gate
         run: make test
