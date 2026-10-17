@@ -1,4 +1,4 @@
-# PRD §9: lint, L1 + L2 with the 85% coverage gate, E2E build, L3 scenarios (M1: E2E-1 to E2E-6).
+# PRD §9: lint, L1 + L2 with the 85% coverage gate, E2E build, L3 scenarios (E2E-1 to E2E-10 and E2E-13).
 name: ci
 
 on:
@@ -59,7 +59,7 @@ jobs:
       - name: NFR-10 Release build has no test hooks
         run: make check-release
 
-      - name: L3 E2E-1 to E2E-6
+      - name: L3 E2E-1 to E2E-10 and E2E-13
         run: make e2e
 
       - name: Upload test artifacts
