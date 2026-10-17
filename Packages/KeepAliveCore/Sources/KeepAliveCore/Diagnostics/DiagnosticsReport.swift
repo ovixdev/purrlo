@@ -1,23 +1,54 @@
 import Foundation
 
 /// Copy Diagnostics text (NFR-9). Pure: the app supplies the log extract and the home path.
-public enum DiagnosticsReport {
-    public static func make(
-        marketingVersion: String,
-        build: String,
-        osVersion: String,
+public struct DiagnosticsReport: Sendable {
+    public struct Version: Sendable {
+        public var marketing: String
+        public var build: String
+        public var system: String
+
+        public init(marketing: String, build: String, system: String) {
+            self.marketing = marketing
+            self.build = build
+            self.system = system
+        }
+    }
+
+    public var marketingVersion: String
+    public var build: String
+    public var osVersion: String
+    public var state: String
+    public var keepAlive: Bool
+    public var signal: String
+    public var preventIdleSleep: Bool
+    public var disconnectBeforeSleep: Bool
+    public var reconnectAfterUnlock: Bool
+    public var targetName: String?
+    public var targetUID: String?
+    public var transitions: [TransitionEntry]
+
+    public init(
+        version: Version,
         state: String,
-        keepAlive: Bool,
-        signal: String,
-        preventIdleSleep: Bool,
-        disconnectBeforeSleep: Bool,
-        reconnectAfterUnlock: Bool,
+        config: KeepAliveConfig,
         targetName: String?,
-        targetUID: String?,
-        transitions: [TransitionEntry],
-        logExtract: String,
-        homeDirectory: String
-    ) -> String {
+        transitions: [TransitionEntry]
+    ) {
+        marketingVersion = version.marketing
+        build = version.build
+        osVersion = version.system
+        self.state = state
+        keepAlive = config.keepAlive
+        signal = config.signal.rawValue
+        preventIdleSleep = config.preventIdleSleep
+        disconnectBeforeSleep = config.disconnectBeforeSleep
+        reconnectAfterUnlock = config.reconnectAfterUnlock
+        self.targetName = targetName
+        targetUID = config.targetUID
+        self.transitions = transitions
+    }
+
+    public func text(logExtract: String, homeDirectory: String) -> String {
         var lines = [
             "Purrlo \(marketingVersion) (\(build))",
             "macOS \(osVersion)",
@@ -43,7 +74,7 @@ public enum DiagnosticsReport {
         }
         lines.append("---")
         lines.append(logExtract)
-        return redact(lines.joined(separator: "\n"), homeDirectory: homeDirectory)
+        return Self.redact(lines.joined(separator: "\n"), homeDirectory: homeDirectory)
     }
 
     /// Replaces Bluetooth addresses with `logUID` and removes the home-directory path.
