@@ -58,7 +58,6 @@ targets:
       - package: KeepAliveCore
       - package: Sparkle
         product: Sparkle
-        embed: true
     settings:
       base:
         PRODUCT_NAME: Purrlo
