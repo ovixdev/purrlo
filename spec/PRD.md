@@ -8,7 +8,7 @@ Build a free, open-source, notarized macOS menu bar app that keeps a chosen Blue
 
 **Problem.** An Echo used as a Bluetooth speaker announces "Now connected to \[device name\]" on every reconnect. Amazon staff have confirmed this cannot be disabled. A Mac reconnects often: macOS closes idle audio streams after a few seconds, and sleep, wake and lid close drop the link.
 
-**Solution.** Remove every reason for the link to drop while the user wants it: stream an inaudible signal so it never goes idle, keep the Mac awake while the speaker is connected (lid open or closed), and handle the remaining sleep cases with one controlled, muted reconnect.
+**Solution.** Remove every reason for the link to drop while the user wants it: stream an inaudible signal so it never goes idle, keep the Mac awake while the speaker is connected (lid open or closed), and handle the remaining sleep cases with one controlled reconnect.
 
 **Name:** Purrlo (chosen 17 October 2026; candidates in the appendix). Bundle IDs: io.github.\<owner>.purrlo and io.github.\<owner>.purrlo.helper. Product name and icon must not use "Echo" or "Alexa" (Amazon trademarks); the README may say "works with Amazon Echo".
 
@@ -22,7 +22,7 @@ Build a free, open-source, notarized macOS menu bar app that keeps a chosen Blue
 | Signing              | Apple Developer Program, $99 per year                                           |
 | Prevent sleep        | Always on while the speaker is connected, on battery and on power               |
 | Lid closed           | Supported in v1 through a privileged helper                                     |
-| Sleep handling       | Disconnect before sleep; reconnect once after unlock, muted                     |
+| Sleep handling       | Disconnect before sleep; reconnect once after unlock                            |
 | Update feed and site | GitHub Pages; a .dev domain may come later                                      |
 | License              | MIT                                                                             |
 
@@ -37,7 +37,7 @@ Five things drop the link; v1 handles four of them and fully eliminates the firs
 | macOS closes an idle output stream after a few seconds      | Continuous inaudible stream to the target (FR-3)                         | None expected                                |
 | Idle system sleep                                           | Power assertion while the target is connected (FR-9)                     | None                                         |
 | Lid closed                                                  | Privileged helper disables sleep while the target is connected (FR-10)   | Heat and battery; guarded by safety cut-offs |
-| Manual sleep, low battery, or sleep after a cut-off         | Disconnect before sleep, one muted reconnect after unlock (FR-11, FR-12) | One announcement, possibly silent            |
+| Manual sleep, low battery, or sleep after a cut-off         | Disconnect before sleep, one reconnect after unlock (FR-11, FR-12)       | One announcement                             |
 | Radio interference, distance, another device takes the Echo | Not handled                                                              | Documented in README                         |
 
 **Findings the design relies on**
@@ -70,7 +70,7 @@ Success means a whole working day, lid open or closed, with zero announcements a
 
 - G1. Keep one chosen Bluetooth output connected and streaming for as long as the user leaves it connected.
 - G2. Keep the Mac awake while that speaker is connected, including with the lid closed, with safety cut-offs.
-- G3. When sleep does happen, avoid background reconnects and make the one return reconnect muted.
+- G3. When sleep does happen, avoid background reconnects and limit the return to one reconnect.
 - G4. Install like any Mac app: download or `brew install`, open, pick the speaker; no Terminal, no warnings.
 - G5. Fully automated, reproducible build, test and release pipeline on GitHub.
 
@@ -101,7 +101,7 @@ Success means a whole working day, lid open or closed, with zero announcements a
 
 ## 4. Functional requirements
 
-All MUST items are in scope for v1.0; FR-13 ships only if its M1 spike passes.
+All MUST items are in scope for v1.0 except FR-13, which its M1 spike dropped (§11, 17 October 2026).
 
 | ID    | Priority    | Requirement                                                                                                                                                                                                                                                                                                                                                                                   |
 | ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -117,7 +117,7 @@ All MUST items are in scope for v1.0; FR-13 ships only if its M1 spike passes.
 | FR-10 | MUST        | "Stay awake with lid closed" toggle, default off. When on and the target is connected, the helper (§6) disables system sleep so closing the lid keeps the link. Cut-offs that restore normal sleep at once: battery at or below the threshold (default 20%, range 10–50%), thermal state serious or critical, target disconnected, app quit or crashed, "Sleep Now" chosen, toggle turned off |
 | FR-11 | MUST        | Disconnect before sleep, default on: when the system is about to sleep for any reason, stop the stream and disconnect the target, so background wakes (Power Nap, dark wake) cannot reconnect it                                                                                                                                                                                              |
 | FR-12 | MUST        | Reconnect after unlock, default on: after the next full wake and screen unlock, reconnect the target once if the app disconnected it; one retry after 10 s; then Waiting                                                                                                                                                                                                                      |
-| FR-13 | MUST, gated | Quiet reconnect, default on if shipped: before the FR-11 disconnect, save the target's output volume and set it to 0; restore it 3 s after the reconnect. Remove the feature if the M1 spike shows the announcement ignores this volume                                                                                                                                                       |
+| FR-13 | Dropped     | Dropped after E2E-H4 (§11): the announcement ignores the Mac-side volume. Was: quiet reconnect, default on if shipped: before the FR-11 disconnect, save the target's output volume and set it to 0; restore it 3 s after the reconnect. Remove the feature if the M1 spike shows the announcement ignores this volume                                                                                                                                                       |
 | FR-14 | MUST        | "Sleep Now" menu item: clears FR-10, runs FR-11 and sleeps the Mac                                                                                                                                                                                                                                                                                                                            |
 | FR-15 | SHOULD      | User notification when a cut-off ends lid-closed mode (for example "Battery at 20%: your Mac can sleep again")                                                                                                                                                                                                                                                                                |
 | FR-16 | MUST        | Sparkle 2 updates: check daily, with a "Check for Updates…" item and an opt-out                                                                                                                                                                                                                                                                                                               |
@@ -131,7 +131,7 @@ All MUST items are in scope for v1.0; FR-13 ships only if its M1 spike passes.
 2. Keep alive ✓
 3. Speaker ▸ output devices, ✓ on the target
 4. Signal ▸ Inaudible tone / Silence
-5. Sleep ▸ Prevent idle sleep ✓ · Stay awake with lid closed · Battery cut-off ▸ 10–50% · Disconnect before sleep ✓ · Reconnect after unlock ✓ · Quiet reconnect ✓
+5. Sleep ▸ Prevent idle sleep ✓ · Stay awake with lid closed · Battery cut-off ▸ 10–50% · Disconnect before sleep ✓ · Reconnect after unlock ✓
 6. Sleep Now
 7. Launch at Login ✓
 8. Check for Updates…, Help, Copy Diagnostics, About, Quit
@@ -157,29 +157,28 @@ One state machine (`AppState`) owns all decisions; the UI only reads it, and eve
 | From               | Event                      | To        | Side effects                                                                            |
 | ------------------ | -------------------------- | --------- | --------------------------------------------------------------------------------------- |
 | Off                | User enables               | Waiting   | None                                                                                    |
-| Waiting            | Target appears             | Streaming | Start engine; hold assertion; set lid block if allowed; restore volume if FR-13 pending |
+| Waiting            | Target appears             | Streaming | Start engine; hold assertion; set lid block if allowed                                  |
 | Streaming          | Target disappears          | Waiting   | Stop engine; release assertion; clear lid block                                         |
 | Streaming          | Cut-off (battery, thermal) | Streaming | Clear lid block; notify (FR-15); idle assertion stays                                   |
-| Streaming, Waiting | System will sleep          | Suspended | FR-13 volume to 0, FR-11 disconnect, then allow sleep (max 5 s)                         |
+| Streaming, Waiting | System will sleep          | Suspended | FR-11 disconnect, then allow sleep (max 5 s)                                            |
 | Suspended          | Full wake                  | Suspended | Wait for unlock                                                                         |
 | Suspended          | Unlock                     | Waiting   | FR-12 reconnect once if the app disconnected the target                                 |
 | Streaming          | Engine fails 3 times       | Error     | Notify; retry on device change or user action                                           |
-| Any                | User disables              | Off       | Release everything; restore volume if pending                                           |
+| Any                | User disables              | Off       | Release everything                                                                      |
 
-**Sleep sequence** (FR-11, FR-13)
+**Sleep sequence** (FR-11)
 
 1. `IORegisterForSystemPower` receives `kIOMessageSystemWillSleep`.
-2. Stop the engine. If FR-13 is on, save the target volume to Settings and set it to 0.
+2. Stop the engine.
 3. Close the target's Bluetooth connection (`IOBluetoothDevice.closeConnection`); record `disconnectedByApp = true`.
 4. Clear the lid-closed block and release the assertion; call `IOAllowPowerChange`. Steps 2–4 must finish within 5 s or sleep is allowed anyway.
 
-**Wake sequence** (FR-12, FR-13)
+**Wake sequence** (FR-12)
 
 1. Ignore dark wakes; act on `NSWorkspace.didWakeNotification` (full wake) only.
 2. Wait for unlock: `com.apple.screenIsUnlocked` distributed notification, or, if no password is required, the session becoming active.
 3. If `disconnectedByApp`, call `openConnection` once; on failure retry once after 10 s, then go to Waiting.
-4. When the target appears and streaming starts, wait 3 s and restore the saved volume.
-5. If the user connected the target, or another device took it, before step 3, skip the reconnect and only restore the volume when the target next appears.
+4. If the user connected the target, or another device took it, before step 3, skip the reconnect.
 
 **Lid-closed mode** (FR-10)
 
@@ -219,10 +218,9 @@ Three shipped targets plus a test-only CLI, all in Swift, with Sparkle as the on
 | `PowerManager`        | Idle-sleep assertion (FR-9)                                                   | `IOPMAssertionCreateWithName`, `kIOPMAssertionTypePreventUserIdleSystemSleep`                                                                                                       |
 | `SleepCoordinator`    | Will-sleep and wake handling, unlock detection                                | `IORegisterForSystemPower`, `IOAllowPowerChange`, `NSWorkspace` notifications, `com.apple.screenIsUnlocked`                                                                         |
 | `BluetoothController` | Disconnect and single reconnect of the target                                 | `IOBluetoothDevice` (`closeConnection`, `openConnection`)                                                                                                                           |
-| `VolumeManager`       | Save, zero and restore the target volume (FR-13)                              | `kAudioHardwareServiceDeviceProperty_VirtualMainVolume`                                                                                                                             |
 | `PowerSourceMonitor`  | Battery percentage, AC state, thermal state                                   | `IOPSCopyPowerSourcesInfo`, `ProcessInfo.thermalState`                                                                                                                              |
 | `HelperClient`        | XPC client to `SleepHelper`; heartbeat every 20 s                             | `NSXPCConnection`                                                                                                                                                                   |
-| `Settings`            | Persisted preferences and pending volume restore                              | `UserDefaults`                                                                                                                                                                      |
+| `Settings`            | Persisted preferences                                                         | `UserDefaults`                                                                                                                                                                      |
 | `AppState`            | The state machine of §5                                                       | Main actor                                                                                                                                                                          |
 
 **Audio**
@@ -235,7 +233,7 @@ Three shipped targets plus a test-only CLI, all in Swift, with Sparkle as the on
 **Devices**
 
 - Bluetooth outputs: transport type `Bluetooth` or `BluetoothLE`; listed first, others after a separator.
-- Map a CoreAudio UID to its `IOBluetoothDevice` by the Bluetooth address embedded in the UID; fall back to matching the paired device name; if neither matches, disable FR-11 to FR-13 for that device and say so in the menu.
+- Map a CoreAudio UID to its `IOBluetoothDevice` by the Bluetooth address embedded in the UID; fall back to matching the paired device name; if neither matches, disable FR-11 and FR-12 for that device and say so in the menu.
 - All CoreAudio listeners run on one private serial queue and hop to the main actor.
 
 **Privileged helper (`SleepHelper`)**
@@ -271,13 +269,13 @@ Every case below ends in a defined state, and none may start a Bluetooth connect
 | EC-9  | Fast user switching away                           | Stream stops; resumes when the session is active again                       |
 | EC-10 | Power Nap or dark wake at night                    | Target stays disconnected; no announcement                                   |
 | EC-11 | Another device takes the Echo while the Mac sleeps | FR-12 reconnect fails, one retry, then Waiting                               |
-| EC-12 | App quits or crashes with volume at 0              | Saved volume restored the next time the target appears                       |
+| EC-12 | Dropped with FR-13 (was: app quits with volume at 0) | Not applicable; the app no longer changes the volume                       |
 | EC-13 | App quits or crashes with the lid block set        | Helper clears the flag within 60 s (immediately on connection drop)          |
 | EC-14 | Helper not approved or removed                     | FR-10 shows "Needs approval" and links to Login Items; everything else works |
 | EC-15 | Battery reaches the cut-off with the lid closed    | Flag cleared; Mac sleeps normally; FR-11 runs                                |
 | EC-16 | Thermal state serious or critical                  | Flag cleared until the state returns to nominal or fair for 5 minutes        |
 | EC-17 | Two Macs paired to one Echo                        | Only one can be connected; the other stays Waiting                           |
-| EC-18 | Device UID has no Bluetooth address                | FR-11 to FR-13 disabled for it; streaming still works                        |
+| EC-18 | Device UID has no Bluetooth address                | FR-11 and FR-12 disabled for it; streaming still works                       |
 
 **Non-functional requirements**
 
@@ -334,9 +332,9 @@ Coverage gate: 85% line coverage for `KeepAliveCore`; CI fails below it.
 | E2E-4  | `04_target_disappears.sh` | Destroy the virtual device                                                                  | Waiting within 1 s; assertion released; fake helper got `setSleepDisabled(false)`                                                                                                                                         |
 | E2E-5  | `05_persistence.sh`       | Quit and relaunch                                                                           | Same target by UID; Streaming within 2 s                                                                                                                                                                                  |
 | E2E-6  | `06_sample_rate.sh`       | Change BlackHole from 48 kHz to 44.1 kHz                                                    | One engine restart in the log; signal assertion passes                                                                                                                                                                    |
-| E2E-7  | `07_will_sleep.sh`        | `kactl simulate will-sleep`                                                                 | Log order: volume saved, volume set 0, `closeConnection` once, helper flag cleared, assertion released, Suspended; finished in under 5 s                                                                                  |
+| E2E-7  | `07_will_sleep.sh`        | `kactl simulate will-sleep`                                                                 | Log order: `closeConnection` once, helper flag cleared, assertion released, Suspended; finished in under 5 s                                                                                                              |
 | E2E-8  | `08_dark_wake.sh`         | `simulate did-wake`, no unlock, wait 30 s                                                   | No `openConnection` call                                                                                                                                                                                                  |
-| E2E-9  | `09_unlock_reconnect.sh`  | `simulate unlock`, then recreate the device                                                 | `openConnection` exactly once; Streaming; volume restored 3 s ± 0.5 s after streaming starts                                                                                                                              |
+| E2E-9  | `09_unlock_reconnect.sh`  | `simulate unlock`, then recreate the device                                                 | `openConnection` exactly once; Streaming                                                                                                                                                                                  |
 | E2E-10 | `10_reconnect_fails.sh`   | Fake `openConnection` fails                                                                 | One retry at 10 s ± 1 s; then Waiting; no further calls for 60 s                                                                                                                                                          |
 | E2E-11 | `11_lid_mode_cutoffs.sh`  | Enable lid mode; `simulate battery 19`; restore; `simulate thermal serious`; destroy device | `setSleepDisabled(true)` only while Streaming and above cut-off; `false` on each cut-off; notification posted                                                                                                             |
 | E2E-12 | `12_helper_failsafe.sh`   | Load the real helper with `sudo launchctl bootstrap`; enable lid mode; `kill -9` the app    | `pmset -g` shows `SleepDisabled 1`, then `0` within 2 s; restarting the helper also leaves `0`                                                                                                                            |
@@ -469,7 +467,7 @@ Four milestones, each ending with its tests green in CI; v1.0 ships when all fou
 | Milestone                   | Scope                                                                                                                    | Exit criteria                                                                                                    |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | M1 Core and spike           | `KeepAliveCore` (devices, engine, signal, power assertion, state machine); `kactl`; CI test environment; FR-1 to FR-9    | L1, L2 and E2E-1 to E2E-6 green; E2E-H4 run on a real Echo, result recorded, FR-13 kept or dropped               |
-| M2 App and sleep handling   | Menu UI, first run, settings; `SleepCoordinator`, `BluetoothController`, `VolumeManager`; FR-11 to FR-13, FR-16 to FR-18 | E2E-7 to E2E-10 and E2E-13 green; E2E-H3 passes                                                                  |
+| M2 App and sleep handling   | Menu UI, first run, settings; `SleepCoordinator`, `BluetoothController`; FR-11, FR-12, FR-16 to FR-18                    | E2E-7 to E2E-10 and E2E-13 green; E2E-H3 passes                                                                  |
 | M3 Lid-closed mode          | `SleepHelper`, `HelperClient`, cut-offs, approval flow; FR-10, FR-14, FR-15                                              | E2E-11 and E2E-12 green; E2E-H2 passes                                                                           |
 | M4 Release and distribution | release-please, `release.yml`, notarization, Sparkle, Pages, cask, README and site                                       | A test tag produces a notarized release; E2E-14 to E2E-16 green; E2E-H5 passes; Sparkle updates v0.9.0 to v0.9.1 |
 
@@ -487,7 +485,7 @@ Four milestones, each ending with its tests green in CI; v1.0 ships when all fou
 | ----------------------------------------------------------------------- | ------------------------ | -------------------------------------------------- |
 | Does macOS reconnect the Echo on its own after the app disconnected it? | E2E-H3                   | FR-12 reconnects after unlock                      |
 | Does the Echo keep the link with pure zeros?                            | E2E-H1 in Silence mode   | Tone is the default                                |
-| Does the announcement follow the Mac-side volume?                       | E2E-H4                   | FR-13 built, shipped only if it passes             |
+| Does the announcement follow the Mac-side volume?                       | E2E-H4                   | Answered 17 October 2026: no. E2E-H4 on an Echo Studio (Mac16,12, macOS 27.0.1) heard the announcement at its usual loudness at Mac-side volume 0 and at 50%, and the volume stayed at 0 across the reconnect. FR-13 dropped |
 | Will `kIOPMSleepDisabledKey` keep working on future macOS?              | Check on each macOS beta | `pmset disablesleep` fallback                      |
 | Move the site and feed to a .dev domain?                                | Owner decision           | GitHub Pages; custom domain added on the same site |
 | Final product name                                                      | Appendix                 | Purrlo (decided)                                   |

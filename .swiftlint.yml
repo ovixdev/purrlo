@@ -1,0 +1,40 @@
+included:
+  - App
+  - Tools
+  - Packages/KeepAliveCore/Sources
+  - Packages/KeepAliveCore/Tests
+  - Packages/KeepAliveCore/Package.swift
+excluded:
+  - Packages/KeepAliveCore/.build
+  - build
+
+# SwiftFormat owns layout; SwiftLint checks the rest.
+disabled_rules:
+  - trailing_comma
+  - opening_brace
+  - vertical_parameter_alignment_on_call
+
+opt_in_rules:
+  - empty_count
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - redundant_nil_coalescing
+  - sorted_imports
+
+line_length:
+  warning: 120
+  error: 140
+  ignores_comments: true
+
+identifier_name:
+  excluded: [id, ok, to, dt]
+
+type_body_length:
+  warning: 300
+file_length:
+  warning: 500
+
+# Exhaustive switches over the state machine's events and effects are the point, not complexity.
+cyclomatic_complexity:
+  ignores_case_statements: true
