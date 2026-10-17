@@ -105,6 +105,11 @@ reset_app_state() { defaults delete "$BUNDLE_ID" >/dev/null 2>&1 || true; }
 vdev_create() { kactl vdev create --name "$TARGET_NAME" --uid "$TARGET_UID" >/dev/null; }
 vdev_destroy() { kactl vdev destroy --uid "$TARGET_UID"; }
 
+# The app has seen the target go away. A sleep scenario must wait for this before `simulate unlock`,
+# or the reducer still sees the target and takes the "came back on its own" path (§5 wake step 5).
+target_gone() { ! kactl devices | grep -qF "\"$TARGET_UID\""; }
+wait_target_gone() { within 2 target_gone >/dev/null || { echo "app still lists $TARGET_UID" >&2; return 1; }; }
+
 # Streaming to the virtual target, with fresh settings.
 start_streaming() {
     reset_app_state

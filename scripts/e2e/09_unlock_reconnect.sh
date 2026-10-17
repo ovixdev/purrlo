@@ -9,6 +9,7 @@ plan 4
 start_streaming
 kactl simulate will-sleep >/dev/null
 vdev_destroy
+wait_target_gone
 kactl simulate did-wake >/dev/null
 kactl simulate unlock >/dev/null
 
