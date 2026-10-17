@@ -58,8 +58,8 @@
                     DispatchQueue.main.async {
                         MainActor.assumeIsolated {
                             self?.finish(
-                                ok: status == kIOReturnSuccess, gate: gate, continuation: continuation, uid: uid,
-                                status: status, timedOut: false
+                                ok: status == kIOReturnSuccess, note: "\(logUID(uid)) status \(status)",
+                                gate: gate, continuation: continuation
                             )
                         }
                     }
@@ -68,8 +68,8 @@
                 if immediate != kIOReturnSuccess {
                     let already = device.isConnected()
                     finish(
-                        ok: already, gate: gate, continuation: continuation, uid: uid, status: immediate,
-                        timedOut: false
+                        ok: already, note: "\(logUID(uid)) status \(immediate)", gate: gate,
+                        continuation: continuation
                     )
                     return
                 }
@@ -80,9 +80,7 @@
                         gate.perform { continuation.resume(returning: false) }
                         return
                     }
-                    self.finish(
-                        ok: false, gate: gate, continuation: continuation, uid: uid, status: 0, timedOut: true
-                    )
+                    finish(ok: false, note: "\(logUID(uid)) timed out", gate: gate, continuation: continuation)
                 }
             }
         }
@@ -112,20 +110,12 @@
             (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice]) ?? []
         }
 
+        /// `note` holds only `logUID` and a status, never the address (NFR-9).
         private func finish(
-            ok: Bool,
-            gate: ResumeOnce,
-            continuation: CheckedContinuation<Bool, Never>,
-            uid: String,
-            status: IOReturn,
-            timedOut: Bool
+            ok: Bool, note: String, gate: ResumeOnce, continuation: CheckedContinuation<Bool, Never>
         ) {
             gate.perform {
-                if timedOut {
-                    logger.info("openConnection \(logUID(uid), privacy: .public) timed out")
-                } else {
-                    logger.info("openConnection \(logUID(uid), privacy: .public) status \(status)")
-                }
+                logger.info("openConnection \(note, privacy: .public)")
                 waiter = nil
                 continuation.resume(returning: ok)
             }
