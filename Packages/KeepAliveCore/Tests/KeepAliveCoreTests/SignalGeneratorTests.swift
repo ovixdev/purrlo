@@ -178,7 +178,11 @@ struct SignalGeneratorTests {
         #expect(generator.phase >= 0 && generator.phase < 2 * Double.pi)
     }
 
-    @Test("NFR-3: render performs no heap allocation", arguments: SignalKind.allCases)
+    @Test(
+        "NFR-3: render performs no heap allocation",
+        .enabled(if: AllocationCounter.isAvailable, Comment(rawValue: AllocationCounter.unavailableReason ?? "")),
+        arguments: SignalKind.allCases
+    )
     func renderDoesNotAllocate(kind: SignalKind) {
         let buffers = AudioTestBuffers(channels: 2, frames: 512)
         var generator = SignalGenerator(kind: kind, sampleRate: 48000)
@@ -196,7 +200,10 @@ struct SignalGeneratorTests {
     }
 }
 
-@Suite("AllocationCounter")
+@Suite(
+    "AllocationCounter",
+    .enabled(if: AllocationCounter.isAvailable, Comment(rawValue: AllocationCounter.unavailableReason ?? ""))
+)
 struct AllocationCounterTests {
     private nonisolated(unsafe) static var sink: UnsafeMutableRawPointer?
     private nonisolated(unsafe) static var arraySink: [Int] = []
