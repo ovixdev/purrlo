@@ -31,7 +31,9 @@ struct SleepCoordinatorTests {
     private func make(
         locked: Bool = false, watchdog: TimeInterval = SleepCoordinator.watchdogSeconds, box: Box
     ) -> SleepCoordinator {
-        let coordinator = SleepCoordinator(watchdogSeconds: watchdog, allow: { box.allow($0) }, screenLocked: { locked })
+        let coordinator = SleepCoordinator(
+            watchdogSeconds: watchdog, allow: { box.allow($0) }, screenLocked: { locked }
+        )
         coordinator.bind { box.record($0) }
         return coordinator
     }

@@ -1,9 +1,12 @@
 import KeepAliveCore
 import SwiftUI
 
-/// Minimal M1 menu (PRD §4 menu layout, items 1–4, 5 in part, 7 and Quit); M2 completes it.
+/// Menu bar menu (PRD §4).
 struct MenuContent: View {
     let appState: AppState
+    let updates: Updates
+    let showHelp: () -> Void
+    let showAbout: () -> Void
 
     var body: some View {
         Text(appState.status.text)
@@ -20,8 +23,31 @@ struct MenuContent: View {
         .pickerStyle(.menu)
 
         Menu("Sleep") {
-            Toggle("Prevent idle sleep", isOn: binding(\.config.preventIdleSleep) { appState.setPreventIdleSleep($0) })
+            Toggle(
+                "Prevent idle sleep",
+                isOn: binding(\.config.preventIdleSleep) { appState.setPreventIdleSleep($0) }
+            )
+            Toggle(
+                "Disconnect before sleep",
+                isOn: binding(\.config.disconnectBeforeSleep) { appState.setDisconnectBeforeSleep($0) }
+            )
+            Toggle(
+                "Reconnect after unlock",
+                isOn: binding(\.config.reconnectAfterUnlock) { appState.setReconnectAfterUnlock($0) }
+            )
+            if let warning = appState.bluetoothMatchWarning {
+                Text(LocalizedStringKey(warning))
+            }
         }
+
+        Divider()
+
+        Button("Stay awake with lid closed — not in this version") {}
+            .disabled(true)
+        Button("Battery cut-off — not in this version") {}
+            .disabled(true)
+        Button("Sleep Now — not in this version") {}
+            .disabled(true)
 
         Divider()
 
@@ -35,7 +61,21 @@ struct MenuContent: View {
 
         Divider()
 
-        Button("Quit Purrlo") {
+        Toggle(
+            "Check automatically",
+            isOn: Binding(get: { updates.automatic }, set: { updates.setAutomatic($0) })
+        )
+        Button("Check for Updates…") { updates.check() }
+        if let error = updates.error {
+            Text(error)
+        }
+
+        Divider()
+
+        Button("Help", action: showHelp)
+        Button("Copy Diagnostics") { DiagnosticsCopy.copy(appState) }
+        Button("About", action: showAbout)
+        Button("Quit") {
             appState.stop()
             NSApplication.shared.terminate(nil)
         }

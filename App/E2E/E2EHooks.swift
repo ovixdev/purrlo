@@ -105,7 +105,8 @@
                 case "unlock": appState.send(.screenUnlocked)
                 default:
                     throw CommandError(
-                        description: "simulate accepts will-sleep, did-wake, or unlock; \(action) arrives with lid mode (M3)"
+                        description: "simulate accepts will-sleep, did-wake, or unlock; "
+                            + "\(action) arrives with lid mode (M3)"
                     )
                 }
                 return encode(ControlSuccess(result: status(appState)))
@@ -130,6 +131,8 @@
             switch key {
             case "keepAlive": try appState.setKeepAlive(bool())
             case "preventIdleSleep": try appState.setPreventIdleSleep(bool())
+            case "disconnectBeforeSleep": try appState.setDisconnectBeforeSleep(bool())
+            case "reconnectAfterUnlock": try appState.setReconnectAfterUnlock(bool())
             case "launchAtLogin": try appState.setLaunchAtLogin(bool())
             case "fake-connect": recorder.connectSucceeds = value == "succeed"
             case "signal":

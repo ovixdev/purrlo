@@ -7,6 +7,9 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
+  developmentLanguage: en
+  knownRegions:
+    - en
 
 configs:
   Debug: debug
@@ -19,6 +22,9 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "14.0"
+    DEVELOPMENT_LANGUAGE: en
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     ENABLE_HARDENED_RUNTIME: YES
@@ -33,6 +39,9 @@ settings:
 packages:
   KeepAliveCore:
     path: Packages/KeepAliveCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 
 targets:
   Purrlo:
@@ -47,6 +56,9 @@ targets:
           - "*.entitlements"
     dependencies:
       - package: KeepAliveCore
+      - package: Sparkle
+        product: Sparkle
+        embed: true
     settings:
       base:
         PRODUCT_NAME: Purrlo
@@ -55,9 +67,13 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Resources/Purrlo.entitlements
         GENERATE_INFOPLIST_FILE: NO
       configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Resources/Purrlo-Debug.entitlements
         # Separate identity so E2E runs never touch a real install's settings, socket or login item.
+        # Library validation is off so the ad-hoc E2E build can load Sparkle without starting it.
         E2E:
           PRODUCT_BUNDLE_IDENTIFIER: io.github.ovixdev.purrlo.e2e
+          CODE_SIGN_ENTITLEMENTS: Resources/Purrlo-E2E.entitlements
 
   kactl:
     type: tool

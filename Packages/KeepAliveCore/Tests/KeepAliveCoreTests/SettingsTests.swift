@@ -137,6 +137,27 @@ struct SettingsTests {
         #expect(suite.settings().preventIdleSleep)
     }
 
+    @Test("FR-18: first run stays incomplete until marked done")
+    func firstRunFlag() throws {
+        let suite = try ScratchDefaults()
+        defer { suite.cleanUp() }
+        #expect(!suite.settings().didCompleteFirstRun)
+        suite.settings().didCompleteFirstRun = true
+        #expect(suite.settings().didCompleteFirstRun)
+    }
+
+    @Test("FR-11, FR-12: sleep toggles default on and persist")
+    func sleepToggles() throws {
+        let suite = try ScratchDefaults()
+        defer { suite.cleanUp() }
+        #expect(suite.settings().disconnectBeforeSleep)
+        #expect(suite.settings().reconnectAfterUnlock)
+        suite.settings().disconnectBeforeSleep = false
+        suite.settings().reconnectAfterUnlock = false
+        #expect(!suite.settings().disconnectBeforeSleep)
+        #expect(!suite.settings().reconnectAfterUnlock)
+    }
+
     @Test("FR-6/FR-9: the toggles are independent")
     func togglesIndependent() throws {
         let suite = try ScratchDefaults()
