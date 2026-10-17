@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Runs the CI checks before anything leaves this machine (AGENTS.md). Installed by `make bootstrap`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+if ! command -v xcodebuild >/dev/null 2>&1; then
+    echo "pre-push: Purrlo builds only on macOS with Xcode $(cat .xcode-version). Push from a Mac that has it." >&2
+    exit 1
+fi
+exec make check
