@@ -18,11 +18,14 @@ enum Composition {
             scheduler: TaskScheduler(),
             loginItem: MainAppLoginItem()
         )
-        configureForTesting(&ports, arguments: arguments)
+        #if E2E_HOOKS
+            E2EHooks.configure(&ports, arguments: arguments)
+        #endif
         let subsystem = Bundle.main.bundleIdentifier ?? KeepAliveCore.defaultSubsystem
-        return AppState(settings: Settings(defaults: .standard), ports: ports, subsystem: subsystem)
+        let appState = AppState(settings: Settings(defaults: .standard), ports: ports, subsystem: subsystem)
+        #if E2E_HOOKS
+            E2EHooks.start(appState)
+        #endif
+        return appState
     }
-
-    /// E2E builds swap in recording fakes (PRD §6, test hooks); Release builds compile this to nothing.
-    private static func configureForTesting(_: inout AppState.Ports, arguments _: [String]) {}
 }

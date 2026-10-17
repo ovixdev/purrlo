@@ -135,8 +135,10 @@ public struct KeepAliveMachine: Sendable, Equatable {
             target = Self.findTarget(new.targetUID, in: devices)
             engineFailures = 0
             disconnectedByApp = false
+            if reconnectAttempts > 0 {
+                effects.append(.cancelTimer(.reconnectRetry))
+            }
             reconnectAttempts = 0
-            effects.append(.cancelTimer(.reconnectRetry))
             if state == .streaming || state == .error {
                 state = .waiting
             }

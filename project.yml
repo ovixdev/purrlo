@@ -67,6 +67,9 @@ targets:
         excludes:
           - Info.plist
       - path: Tools/E2EProtocol
+    dependencies:
+      - package: KeepAliveCore
+        product: KeepAliveTestSupport
     settings:
       base:
         PRODUCT_NAME: kactl
