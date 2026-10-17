@@ -34,3 +34,7 @@ type_body_length:
   warning: 300
 file_length:
   warning: 500
+
+# Exhaustive switches over the state machine's events and effects are the point, not complexity.
+cyclomatic_complexity:
+  ignores_case_statements: true
