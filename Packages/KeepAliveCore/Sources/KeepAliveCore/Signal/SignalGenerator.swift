@@ -8,7 +8,12 @@ public struct SignalGenerator: Sendable {
     public static let toneFrequency: Double = 30
     public static let toneAmplitude: Float = 0.001
 
-    public let kind: SignalKind
+    /// 0 is silence, anything else is the tone. One aligned word so a signal change does not restart the HAL.
+    private var kindBits: Int32
+    public var kind: SignalKind {
+        kindBits == 0 ? .silence : .tone
+    }
+
     public let sampleRate: Double
     /// Phase accumulator, always in [0, 2π).
     private(set) var phase: Double = 0
@@ -16,9 +21,14 @@ public struct SignalGenerator: Sendable {
 
     public init(kind: SignalKind, sampleRate: Double) {
         precondition(sampleRate > 0, "sampleRate must be positive")
-        self.kind = kind
+        kindBits = kind == .silence ? 0 : 1
         self.sampleRate = sampleRate
         phaseIncrement = 2 * Double.pi * Self.toneFrequency / sampleRate
+    }
+
+    /// Next callback uses `kind`. Does not touch the phase.
+    public mutating func setKind(_ kind: SignalKind) {
+        kindBits = kind == .silence ? 0 : 1
     }
 
     /// Writes `frameCount` frames into every buffer of `bufferList` (one buffer per channel, Float32).
@@ -28,8 +38,8 @@ public struct SignalGenerator: Sendable {
         let buffers = BufferListView(bufferList)
         let stride = MemoryLayout<Float>.stride
         let frames = Int(frameCount)
-        switch kind {
-        case .silence:
+        // Load once per callback. `storeKind` writes this word from the main thread without exclusive access.
+        if kindBits == 0 {
             var index = 0
             while index < buffers.count {
                 let buffer = buffers[index]
@@ -38,7 +48,7 @@ public struct SignalGenerator: Sendable {
                 }
                 index += 1
             }
-        case .tone:
+        } else {
             let twoPi = 2 * Double.pi
             var phase = phase
             var frame = 0
@@ -60,6 +70,15 @@ public struct SignalGenerator: Sendable {
             }
             self.phase = phase
         }
+    }
+
+    /// Writes the kind word of a live generator. Raw store, so it does not take exclusive access while `render` runs.
+    static func storeKind(_ kind: SignalKind, in generator: UnsafeMutablePointer<SignalGenerator>) {
+        let desired: Int32 = kind == .silence ? 0 : 1
+        guard let offset = MemoryLayout<SignalGenerator>.offset(of: \.kindBits) else {
+            preconditionFailure("kindBits is a stored property")
+        }
+        UnsafeMutableRawPointer(generator).advanced(by: offset).storeBytes(of: desired, as: Int32.self)
     }
 }
 

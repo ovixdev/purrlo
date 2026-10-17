@@ -5,7 +5,8 @@ import CoreAudio
 @MainActor
 public protocol KeepAliveEngine: AnyObject {
     var isRunning: Bool { get }
-    /// Starts a stream bound to `device` at its nominal rate and channel count. Stops any previous stream first.
+    /// Starts a stream bound to `device` at its nominal rate and channel count.
+    /// A signal change on that same device leaves the unit running.
     func start(device: AudioDevice, signal: SignalKind) throws(EngineError)
     /// Idempotent.
     func stop()
@@ -31,6 +32,9 @@ public final class AUHALEngine: KeepAliveEngine {
     private var unit: AudioUnit?
     /// Render state read only by the render thread while the unit runs; freed after the unit is disposed.
     private var generator: UnsafeMutablePointer<SignalGenerator>?
+    private var boundObjectID: UInt32?
+    private var boundSampleRate: Double = 0
+    private var boundChannels: Int = 0
 
     public init() {}
 
@@ -39,12 +43,22 @@ public final class AUHALEngine: KeepAliveEngine {
     }
 
     public func start(device: AudioDevice, signal: SignalKind) throws(EngineError) {
+        // Stopping the unit to change tone/silence lets the loopback clock run ahead of the output.
+        // BlackHole then fills the input with exact zeros (a 32 ms run, 2.2 s into E2E-2's second tone).
+        if unit != nil, boundObjectID == device.objectID, boundSampleRate == device.nominalSampleRate,
+           boundChannels == device.outputChannels, let generator {
+            SignalGenerator.storeKind(signal, in: generator)
+            return
+        }
         stop()
         let generator = UnsafeMutablePointer<SignalGenerator>.allocate(capacity: 1)
         generator.initialize(to: SignalGenerator(kind: signal, sampleRate: device.nominalSampleRate))
         do {
             unit = try Self.makeUnit(device: device, generator: generator)
             self.generator = generator
+            boundObjectID = device.objectID
+            boundSampleRate = device.nominalSampleRate
+            boundChannels = device.outputChannels
         } catch {
             generator.deinitialize(count: 1)
             generator.deallocate()
@@ -64,6 +78,7 @@ public final class AUHALEngine: KeepAliveEngine {
             generator.deallocate()
             self.generator = nil
         }
+        boundObjectID = nil
     }
 
     private static func makeUnit(
