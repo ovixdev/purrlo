@@ -139,6 +139,19 @@ expect_signal() {
     python3 -I "$E2E_LIB/assert_signal.py" "$mode" "$wav"
 }
 
+# call_count <substring>: how many recorded Bluetooth or helper calls contain the substring.
+call_count() {
+    kactl calls | python3 -I -c 'import json, sys
+r = json.load(sys.stdin)["result"]
+print(sum(1 for c in r if sys.argv[1] in c["call"]))' "$1"
+}
+
+expect_call_count() {
+    local needle="$1" expected="$2" actual
+    actual="$(call_count "$needle")"
+    [ "$actual" = "$expected" ] || { echo "$needle is $actual, expected $expected"; kactl calls; return 1; }
+}
+
 # within <seconds> <command...>: retries every 20 ms, about <seconds> worth of attempts, then shows the last output.
 # Timing-critical state checks use `kactl wait` instead, which measures in-process.
 within() {

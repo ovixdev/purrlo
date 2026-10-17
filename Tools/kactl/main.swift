@@ -13,6 +13,7 @@ app (over the E2E control socket):
   transitions                         ordered transition log since launch
   calls                               Bluetooth and helper calls recorded by --fake-* ports
   wait <state> [--timeout <s>]        poll until the app is in <state>; prints the seconds it took
+  simulate will-sleep|did-wake|unlock inject a sleep, wake, or unlock event
   quit                                quit the app gracefully
 
 virtual devices (CoreAudio):

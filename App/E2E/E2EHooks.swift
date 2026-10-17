@@ -98,8 +98,19 @@
                     NSApplication.shared.terminate(nil)
                 }
                 return encode(ControlSuccess(result: "quitting"))
+            case let ("simulate", [action]):
+                switch action {
+                case "will-sleep": appState.send(.systemWillSleep)
+                case "did-wake": appState.send(.systemDidWake)
+                case "unlock": appState.send(.screenUnlocked)
+                default:
+                    throw CommandError(
+                        description: "simulate accepts will-sleep, did-wake, or unlock; \(action) arrives with lid mode (M3)"
+                    )
+                }
+                return encode(ControlSuccess(result: status(appState)))
             case ("simulate", _):
-                throw CommandError(description: "simulate arrives with sleep handling (M2) and lid mode (M3)")
+                throw CommandError(description: "simulate accepts will-sleep, did-wake, or unlock")
             default:
                 throw CommandError(
                     description: "unknown command: \(request.cmd) \(request.args.joined(separator: " "))"
