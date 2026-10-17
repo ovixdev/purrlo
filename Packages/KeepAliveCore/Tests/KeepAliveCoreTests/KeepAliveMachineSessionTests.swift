@@ -19,7 +19,11 @@ struct KeepAliveMachineSessionTests {
         var machine = KeepAliveMachineTests.machine(in: .streaming, target: device)
         let effects = machine.reduce(.systemWillSleep)
         #expect(!effects.contains {
-            if case .disconnectBluetooth = $0 { true } else { false }
+            if case .disconnectBluetooth = $0 {
+                true
+            } else {
+                false
+            }
         })
         #expect(!machine.disconnectedByApp)
     }
@@ -32,7 +36,11 @@ struct KeepAliveMachineSessionTests {
         _ = machine.reduce(.configChanged(config))
         let effects = machine.reduce(.systemWillSleep)
         #expect(!effects.contains {
-            if case .disconnectBluetooth = $0 { true } else { false }
+            if case .disconnectBluetooth = $0 {
+                true
+            } else {
+                false
+            }
         })
         #expect(!machine.disconnectedByApp)
         #expect(machine.state == .suspended)
@@ -45,7 +53,11 @@ struct KeepAliveMachineSessionTests {
         #expect(machine.state == .streaming)
         #expect(effects.contains(.stopEngine))
         #expect(!effects.contains {
-            if case .disconnectBluetooth = $0 { true } else { false }
+            if case .disconnectBluetooth = $0 {
+                true
+            } else {
+                false
+            }
         })
         #expect(machine.lidBlockSet)
     }

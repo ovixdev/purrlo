@@ -338,7 +338,6 @@ public struct KeepAliveMachine: Sendable, Equatable {
         assertionHeld = false
         effects.append(.releaseAssertion)
     }
-
 }
 
 extension KeepAliveMachine {

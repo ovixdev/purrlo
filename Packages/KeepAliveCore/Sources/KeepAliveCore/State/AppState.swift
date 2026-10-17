@@ -82,7 +82,7 @@ public final class AppState {
         started = true
         ports.deviceMonitor.start { [weak self] devices in
             guard let self else { return }
-            self.send(.devicesChanged(self.annotate(devices)))
+            send(.devicesChanged(annotate(devices)))
         }
         devices = annotate(ports.deviceMonitor.devices)
         machine = KeepAliveMachine(
